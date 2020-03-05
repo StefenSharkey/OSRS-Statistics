@@ -11,6 +11,7 @@ import net.runelite.api.events.CommandExecuted;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.NpcDespawned;
 import net.runelite.api.events.StatChanged;
+import net.runelite.client.config.ConfigItem;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
@@ -45,8 +46,7 @@ public class XpStatisticsPlugin extends Plugin {
     @Override
     protected void startUp() {
         log.info("Xp Statistics started!");
-        database = Database.getInstance(config);
-        database.createDatabase();
+        database = new Database(config);
     }
 
     @Override
@@ -124,7 +124,19 @@ public class XpStatisticsPlugin extends Plugin {
 
         if (npc.isDead()) {
             Player player = client.getLocalPlayer();
-//            database.insertKill();
+
+            if (player != null) {
+                WorldPoint location = player.getWorldLocation();
+
+                database.insertKill(player.getName(),
+                                    new Timestamp(new Date().getTime()),
+                                    npc.getName(),
+                                    npc.getCombatLevel(),
+                                    location.getX(),
+                                    location.getY(),
+                                    location.getPlane(),
+                                    client.getWorld());
+            }
         }
     }
 
@@ -137,7 +149,7 @@ public class XpStatisticsPlugin extends Plugin {
             case "databasepassword":
             case "databasename":
             case "databasetableprefix":
-                database.createDatabase();
+                database.updateConfig(config);
                 break;
         }
     }

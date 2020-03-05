@@ -31,7 +31,7 @@ public interface XpStatisticsConfig extends Config {
             description = "Username for the the database server."
     )
     default String databaseUsername() {
-        return "xpstatistics";
+        return "osrsstatistics";
     }
 
     @ConfigItem(
@@ -49,7 +49,7 @@ public interface XpStatisticsConfig extends Config {
             description = "Name of the database on the server."
     )
     default String databaseName() {
-        return "xp_statistics";
+        return "osrs_statistics";
     }
 
     @ConfigItem(
@@ -59,15 +59,6 @@ public interface XpStatisticsConfig extends Config {
     )
     default String databaseTablePrefix() {
         return "";
-    }
-
-    @ConfigItem(
-            keyName = "databasetablename",
-            name = "Database Table Name",
-            description = "Name for the table in the database."
-    )
-    default String databaseTableName() {
-        return "xp_statistics";
     }
 
     @ConfigItem(

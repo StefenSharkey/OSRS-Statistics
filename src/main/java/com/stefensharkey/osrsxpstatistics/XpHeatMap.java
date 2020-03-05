@@ -34,7 +34,7 @@ public class XpHeatMap {
 //
 //        File mapFile = new File(RuneLite.RUNELITE_DIR, "heatmap.png");
 //        ImageIO.write(map, "png", mapFile);
-        Database database = Database.getInstance();
+        Database database = new Database(config);
         ResultSet results = database.retrieve("LordOfWoeHC");
         HashMap<Point, Integer> data = new HashMap<>();
 
