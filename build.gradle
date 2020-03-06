@@ -28,7 +28,7 @@ dependencies {
     }
 }
 
-group = 'com.stefensharkey.osrsxpstatistics'
+group = 'com.stefensharkey.osrsstatistics'
 version = '1.0-SNAPSHOT'
 sourceCompatibility = '13'
 

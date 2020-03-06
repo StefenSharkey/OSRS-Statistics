@@ -1,4 +1,4 @@
-package com.stefensharkey.osrsxpstatistics;
+package com.stefensharkey.osrsstatistics;
 
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Skill;
@@ -21,11 +21,11 @@ import java.util.Arrays;
 import java.util.HashMap;
 
 @Slf4j
-public class XpHeatMap {
+public class HeatMap {
 
-    private final XpStatisticsConfig config;
+    private final StatisticsConfig config;
 
-    public XpHeatMap(XpStatisticsConfig config) {
+    public HeatMap(StatisticsConfig config) {
         this.config = config;
     }
 

@@ -1,4 +1,4 @@
-package com.stefensharkey.osrsxpstatistics;
+package com.stefensharkey.osrsstatistics;
 
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Skill;
@@ -21,7 +21,7 @@ public class Database {
     private String tableNameKills;
     private String tableNameXp;
 
-    public Database(XpStatisticsConfig config) {
+    public Database(StatisticsConfig config) {
         updateConfig(config);
     }
 
@@ -125,7 +125,7 @@ public class Database {
     }
 
 
-    public void updateConfig(XpStatisticsConfig config) {
+    public void updateConfig(StatisticsConfig config) {
         url = String.format("jdbc:%s://%s/%s?user=%s&password=%s",
                 config.databaseType().getName(),
                 config.databaseServerIp(),

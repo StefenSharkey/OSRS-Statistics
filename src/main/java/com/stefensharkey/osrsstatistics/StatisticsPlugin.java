@@ -1,4 +1,4 @@
-package com.stefensharkey.osrsxpstatistics;
+package com.stefensharkey.osrsstatistics;
 
 import com.google.inject.Provides;
 
@@ -11,7 +11,6 @@ import net.runelite.api.events.CommandExecuted;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.NpcDespawned;
 import net.runelite.api.events.StatChanged;
-import net.runelite.client.config.ConfigItem;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
@@ -26,15 +25,15 @@ import java.util.LinkedHashMap;
 
 @Slf4j
 @PluginDescriptor(
-        name = "XP Statistics"
+        name = "Statistics"
 )
-public class XpStatisticsPlugin extends Plugin {
+public class StatisticsPlugin extends Plugin {
 
     @Inject
     private Client client;
 
     @Inject
-    protected XpStatisticsConfig config;
+    protected StatisticsConfig config;
 
     private final LinkedHashMap<Skill, Integer> skillXpCache = new LinkedHashMap<>();
 
@@ -45,13 +44,13 @@ public class XpStatisticsPlugin extends Plugin {
 
     @Override
     protected void startUp() {
-        log.info("Xp Statistics started!");
+        log.info("Statistics started!");
         database = new Database(config);
     }
 
     @Override
     protected void shutDown() {
-        log.info("Xp Statistics stopped!");
+        log.info("Statistics stopped!");
     }
 
     @Subscribe
@@ -160,7 +159,7 @@ public class XpStatisticsPlugin extends Plugin {
 
         switch (commandExecuted.getCommand().toLowerCase()) {
             case "xpheat":
-                XpHeatMap heatMap = new XpHeatMap(config);
+                HeatMap heatMap = new HeatMap(config);
 
                 try {
                     heatMap.generateHeatMap();
@@ -173,8 +172,8 @@ public class XpStatisticsPlugin extends Plugin {
     }
 
     @Provides
-    XpStatisticsConfig provideConfig(ConfigManager configManager) {
-        return configManager.getConfig(XpStatisticsConfig.class);
+    StatisticsConfig provideConfig(ConfigManager configManager) {
+        return configManager.getConfig(StatisticsConfig.class);
     }
 
 //    private void initXpCache() {

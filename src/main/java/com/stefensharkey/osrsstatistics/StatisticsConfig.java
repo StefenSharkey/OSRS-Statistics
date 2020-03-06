@@ -1,11 +1,11 @@
-package com.stefensharkey.osrsxpstatistics;
+package com.stefensharkey.osrsstatistics;
 
 import net.runelite.client.config.Config;
 import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.config.ConfigItem;
 
-@ConfigGroup("xpstatistics")
-public interface XpStatisticsConfig extends Config {
+@ConfigGroup("statistics")
+public interface StatisticsConfig extends Config {
 
     @ConfigItem(
             keyName = "databasetype",

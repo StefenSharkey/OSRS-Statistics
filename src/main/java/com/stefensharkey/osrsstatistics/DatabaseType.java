@@ -1,4 +1,4 @@
-package com.stefensharkey.osrsxpstatistics;
+package com.stefensharkey.osrsstatistics;
 
 public enum DatabaseType {
 
