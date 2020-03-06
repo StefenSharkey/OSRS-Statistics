@@ -17,8 +17,6 @@ import java.util.stream.Stream;
 @Slf4j
 public class Database {
 
-    private XpStatisticsConfig config;
-
     private String url;
     private String tableNameKills;
     private String tableNameXp;
@@ -128,8 +126,6 @@ public class Database {
 
 
     public void updateConfig(XpStatisticsConfig config) {
-        this.config = config;
-
         url = String.format("jdbc:%s://%s/%s?user=%s&password=%s",
                 config.databaseType().getName(),
                 config.databaseServerIp(),
