@@ -5,7 +5,11 @@ import com.google.inject.Provides;
 import javax.inject.Inject;
 
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.api.*;
+import net.runelite.api.Client;
+import net.runelite.api.GameState;
+import net.runelite.api.NPC;
+import net.runelite.api.Player;
+import net.runelite.api.Skill;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.CommandExecuted;
 import net.runelite.api.events.GameStateChanged;
@@ -37,9 +41,6 @@ public class StatisticsPlugin extends Plugin {
 
     private final LinkedHashMap<Skill, Integer> skillXpCache = new LinkedHashMap<>();
 
-    // Necessary for the initial Xp loop.
-//    private int counter = 0;
-
     private Database database;
 
     @Override
@@ -66,14 +67,7 @@ public class StatisticsPlugin extends Plugin {
                 log.info("XP starting up.");
                 skillXpCache.put(skill, xp);
                 log.info(skillXpCache.toString());
-//                counter++;
             } else {
-                // If the skill XP cache doesn't exist, create it.
-//                if (skillXpCache == null) {
-//                    log.info("XP cache initializing.");
-//                    initXpCache();
-//                }
-
                 // Occasionally, this method will be fired undesirably. To counteract this, only proceed if there is
                 // actually an XP change.
                 if (skillXpCache.get(skill) != xp) {
@@ -176,25 +170,7 @@ public class StatisticsPlugin extends Plugin {
         return configManager.getConfig(StatisticsConfig.class);
     }
 
-//    private void initXpCache() {
-//        /* We are not interested in Skill.OVERALL, as it can be calculated post-capture. Conveniently, it is the last
-//           enum in Skill. */
-//        int newLength = Skill.values().length - 1;
-//        Skill[] skills = Arrays.copyOf(Skill.values(), newLength);
-//        int[] skillExperiences = Arrays.copyOf(client.getSkillExperiences(), newLength);
-//
-//        skillXpCache = IntStream.range(0, skills.length).boxed()
-//                .collect(Collectors.toMap(
-//                        x -> skills[x],
-//                        y -> skillExperiences[y],
-//                        (x, y) -> {
-//                            throw new IllegalStateException(String.format("Duplicate key %s", x));
-//                        },
-//                        LinkedHashMap::new));
-//    }
-
     private void clearXpCache() {
         skillXpCache.clear();
-//        counter = 0;
     }
 }

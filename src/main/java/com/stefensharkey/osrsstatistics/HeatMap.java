@@ -30,20 +30,6 @@ public class HeatMap {
     }
 
     public void generateHeatMap() throws IOException, SQLException {
-//        BufferedImage map = ImageIO.read(new File(RuneLite.RUNELITE_DIR, "map.png"));
-//        Graphics2D graphics = map.createGraphics();
-//        Point2D center = new Point2D.Float(getModifiedX(3230), getModifiedY(3219));
-//        float[] dist = { 0.0F, 0.2F, 1.0F };
-//        Color[] colors = { Color.RED, Color.WHITE, Color.BLUE };
-//        RadialGradientPaint p = new RadialGradientPaint(center, config.heatMapDotSize() / 3.0F, dist, colors);
-//
-//        graphics.setPaint(p);
-//        graphics.fillRect((int) center.getX(), (int) center.getY(), config.heatMapDotSize(), config.heatMapDotSize());
-//        graphics.dispose();
-//
-//        File mapFile = new File(RuneLite.RUNELITE_DIR, "heatmap.png");
-//        ImageIO.write(map, "png", mapFile);
-
         Database database = new Database(config);
         ResultSet results = database.retrieveXp("LordOfWoeBTW");
         HashMap<Point, Integer> data = new HashMap<>();
