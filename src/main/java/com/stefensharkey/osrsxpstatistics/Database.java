@@ -70,7 +70,7 @@ public class Database {
                 " (username, update_time, npc_name, npc_level, x_coord, y_coord, plane, world) " +
                 "VALUES ('" + username + "', " +
                 "'" + dateTime + "', " +
-                npcName + ", " +
+                "'" + npcName + "', " +
                 npcLevel + ", " +
                 xCoord + ", " +
                 yCoord + ", " +
