@@ -116,7 +116,7 @@ public class Database {
         return retrieve("SELECT * FROM " + tableNameXp + " WHERE username = '" + username + "'");
     }
 
-    public ResultSet retrieve(String sql) {
+    private ResultSet retrieve(String sql) {
         try (Connection connection = DriverManager.getConnection(url)) {
             return connection.createStatement().executeQuery(sql);
         } catch (SQLException e) {
