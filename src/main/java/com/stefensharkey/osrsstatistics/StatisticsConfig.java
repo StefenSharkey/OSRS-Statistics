@@ -37,7 +37,8 @@ public interface StatisticsConfig extends Config {
     @ConfigItem(
             keyName = "databasepassword",
             name = "Database Password",
-            description = "Password for the the database server."
+            description = "Password for the the database server.",
+            secret = true
     )
     default String databasePassword() {
         return "";
@@ -69,35 +70,5 @@ public interface StatisticsConfig extends Config {
     )
     default int heatMapDotSize() {
         return 25;
-    }
-
-    @ConfigItem(
-            keyName = "heatmapscale",
-            name = "Heat Map Scale",
-            description = "How large to scale the coordinates.",
-            hidden = true
-    )
-    default int heatMapScale() {
-        return 3;
-    }
-
-    @ConfigItem(
-            keyName = "heatmapoffsetx",
-            name = "Heat Map X Offset",
-            description = "How much the coordinates should be horizontally offset.",
-            hidden = true
-    )
-    default int heatMapOffsetX() {
-        return 3429;
-    }
-
-    @ConfigItem(
-            keyName = "heatmapoffsety",
-            name = "Heat Map Y Offset",
-            description = "How much the coordinates should be vertically offset.",
-            hidden = true
-    )
-    default int heatMapOffsetY() {
-        return 7003;
     }
 }
