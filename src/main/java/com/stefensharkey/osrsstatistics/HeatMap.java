@@ -1,11 +1,17 @@
 package com.stefensharkey.osrsstatistics;
 
 import lombok.extern.slf4j.Slf4j;
+import net.runelite.api.ChatMessageType;
+import net.runelite.api.Client;
 import net.runelite.api.Skill;
 import net.runelite.client.RuneLite;
 
 import javax.imageio.ImageIO;
-import java.awt.*;
+import java.awt.Color;
+import java.awt.Graphics2D;
+import java.awt.Point;
+import java.awt.RadialGradientPaint;
+import java.awt.geom.AffineTransform;
 import java.awt.geom.Ellipse2D;
 import java.awt.geom.Point2D;
 import java.awt.image.BufferedImage;
@@ -21,22 +27,68 @@ import java.util.Arrays;
 import java.util.HashMap;
 
 @Slf4j
-public class HeatMap {
+public class HeatMap implements Runnable {
 
-    private final StatisticsConfig config;
+    private final int PIXELS_PER_TILE = 4;
+    private final int OFFSET_X = 1152;
+    private final int OFFSET_Y = 1216;
 
-    public HeatMap(StatisticsConfig config) {
+    private Client client;
+    private StatisticsConfig config;
+
+    public static boolean isGenerating = false;
+
+    public HeatMap(Client client, StatisticsConfig config) {
+        this.client = client;
         this.config = config;
     }
 
-    public void generateHeatMap() throws IOException, SQLException {
-        Database database = new Database(config);
-        ResultSet results = database.retrieveXp("LordOfWoeBTW");
-        HashMap<Point, Integer> data = new HashMap<>();
-        int max = 0;
+    @Override
+    public void run() {
+        try {
+            isGenerating = true;
+            client.addChatMessage(ChatMessageType.GAMEMESSAGE, "","Heat map is generating...", null);
+
+            HashMap<Point, Integer> data = getData(new Database(config).retrieveXp("LordOfWoeBTW"));
+            BufferedImage map = ImageIO.read(getMap());
+            Graphics2D graphics = map.createGraphics();
+
+            float[] dist = {0.0F, 1.0F};
+            Color[] colors = {new Color(255, 0, 0, 255), new Color(255, 0, 0, 0)};
+
+            data.forEach((point, xpValue) -> {
+                // Instead of flipping the image vertically to account for origin differences, we subtract the point's
+                // vertical coordinate from the image's height.
+                point.y = map.getHeight() - point.y;
+                drawGradientCircle(graphics, point, config.heatMapDotSize(), dist, colors);
+            });
+
+            graphics.dispose();
+
+            File mapFile = new File(RuneLite.RUNELITE_DIR, "heatmap.png");
+            ImageIO.write(map, "png", mapFile);
+
+            client.addChatMessage(ChatMessageType.GAMEMESSAGE, "","Heat map generation finished.", null);
+        } catch (SQLException | IOException e) {
+            e.printStackTrace();
+            client.addChatMessage(ChatMessageType.GAMEMESSAGE, "","Heat map generation failed.", null);
+        } finally {
+            isGenerating = false;
+        }
+    }
+
+    private void drawGradientCircle(Graphics2D graphics, Point2D point, float radius, float[] dist, Color[] colors) {
+        RadialGradientPaint radialGradientPaint = new RadialGradientPaint(point, radius, dist, colors);
+        graphics.setPaint(radialGradientPaint);
+        graphics.fill(new Ellipse2D.Double(point.getX() - radius, point.getY() - radius, radius * 2, radius * 2));
+    }
+
+    private HashMap<Point, Integer> getData(ResultSet results) throws SQLException {
+        HashMap<Point, Integer> newData = new HashMap<>();
 
         while (results.next()) {
-            Point point = new Point(getModifiedX(results.getInt("x_coord")), getModifiedY(results.getInt("y_coord")));
+            Point point = new Point((int) Math.round(getModifiedX(results.getInt("x_coord"))),
+                    (int) Math.round(getModifiedY(results.getInt("y_coord"))));
 
             int newLength = Skill.values().length - 1;
             Skill[] skills = Arrays.copyOf(Skill.values(), newLength);
@@ -46,32 +98,10 @@ public class HeatMap {
                 sum += results.getInt(skill.getName().toLowerCase());
             }
 
-            if (sum > max) {
-                max = sum;
-            }
-
-            data.put(point, sum);
+            newData.put(point, sum);
         }
 
-        BufferedImage map = ImageIO.read(getMap());
-        Graphics2D graphics = map.createGraphics();
-        float[] dist = { 0.0F, 1.0F };
-        Color[] colors = { new Color(255, 0, 0, 255), new Color(255, 0, 0, 0) };
-
-        data.forEach((point, xpValue) -> {
-            drawGradientCircle(graphics, point, 20.0F, dist, colors);
-        });
-
-        graphics.dispose();
-
-        File mapFile = new File(RuneLite.RUNELITE_DIR, "heatmap.png");
-        ImageIO.write(map, "png", mapFile);
-    }
-
-    private void drawGradientCircle(Graphics2D graphics, Point2D center, float radius, float[] dist, Color[] colors) {
-        RadialGradientPaint radialGradientPaint = new RadialGradientPaint(center, radius, dist, colors);
-        graphics.setPaint(radialGradientPaint);
-        graphics.fill(new Ellipse2D.Double(center.getX() - radius, center.getY() - radius, radius * 2, radius * 2));
+        return newData;
     }
 
     private File getMap() {
@@ -91,37 +121,11 @@ public class HeatMap {
         return file;
     }
 
-    private int getModifiedX (int x) {
-        return (x * config.heatMapScale()) - config.heatMapOffsetX();
+    private double getModifiedX (int x) {
+        return (x - OFFSET_X) * PIXELS_PER_TILE;
     }
 
-    private int getModifiedY (int y) {
-        return (y * config.heatMapScale()) - config.heatMapOffsetY();
-    }
-
-    private Color getHeatMapColor (float value) {
-        int numColors = 3;
-        float[][] colors = { { 0, 0, 1 }, { 0, 1, 0 }, { 1, 1, 0 }, { 1, 0, 0 } };
-
-        int index1;
-        int index2;
-        float fractionBetween = 0;
-
-        if (value <= 0.0) {
-            index1 = 0;
-            index2 = 0;
-        } else if (value >= 1) {
-            index1 = numColors;
-            index2 = numColors;
-        } else {
-            value = value * numColors;
-            index1 = (int) Math.floor(value);
-            index2 = index1 + 1;
-            fractionBetween = value - (float) index1;
-        }
-
-        return new Color((colors[index2][0] - colors[index1][0]) * fractionBetween + colors[index1][0],
-                (colors[index2][1] - colors[index1][1]) * fractionBetween + colors[index1][1],
-                (colors[index2][2] - colors[index1][2]) * fractionBetween + colors[index1][2]);
+    private double getModifiedY (int y) {
+        return (y - OFFSET_Y) * PIXELS_PER_TILE;
     }
 }
