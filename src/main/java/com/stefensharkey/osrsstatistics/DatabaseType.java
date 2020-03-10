@@ -12,6 +12,6 @@ public enum DatabaseType {
     }
 
     public String getName() {
-        return this.name;
+        return name;
     }
 }

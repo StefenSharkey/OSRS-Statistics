@@ -1,15 +1,16 @@
 package com.stefensharkey.osrsstatistics;
 
 import com.google.inject.Provides;
-
-import javax.inject.Inject;
-
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.api.*;
+import net.runelite.api.ChatMessageType;
+import net.runelite.api.Client;
+import net.runelite.api.GameState;
+import net.runelite.api.NPC;
+import net.runelite.api.Player;
+import net.runelite.api.Skill;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.CommandExecuted;
 import net.runelite.api.events.GameStateChanged;
-import net.runelite.api.events.GameTick;
 import net.runelite.api.events.NpcDespawned;
 import net.runelite.api.events.StatChanged;
 import net.runelite.client.config.ConfigManager;
@@ -18,8 +19,7 @@ import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 
-import java.io.IOException;
-import java.sql.SQLException;
+import javax.inject.Inject;
 import java.sql.Timestamp;
 import java.util.Date;
 import java.util.LinkedHashMap;
@@ -34,7 +34,7 @@ public class StatisticsPlugin extends Plugin {
     private Client client;
 
     @Inject
-    protected StatisticsConfig config;
+    private StatisticsConfig config;
 
     private final LinkedHashMap<Skill, Integer> skillXpCache = new LinkedHashMap<>();
 
@@ -67,7 +67,9 @@ public class StatisticsPlugin extends Plugin {
             } else {
                 // Occasionally, this method will be fired undesirably. To counteract this, only proceed if there is
                 // actually an XP change.
-                if (skillXpCache.get(skill) != xp) {
+                if (skillXpCache.get(skill) == xp) {
+                    log.warn("Cached XP is the same as current XP.");
+                } else {
                     log.info("XP change: {oldXP={}, newXP={}}", skillXpCache.get(skill), xp);
 
                     skillXpCache.put(skill, xp);
@@ -89,8 +91,6 @@ public class StatisticsPlugin extends Plugin {
                     } else {
                         log.error("Player does not exist.");
                     }
-                } else {
-                    log.warn("Cached XP is the same as current XP.");
                 }
             }
         }
@@ -150,14 +150,15 @@ public class StatisticsPlugin extends Plugin {
 
         switch (commandExecuted.getCommand().toLowerCase()) {
             case "xpheat":
-                if (!HeatMap.isGenerating) {
-                    new Thread(new HeatMap(client, config)).start();
-                } else {
+                if (HeatMap.isGenerating) {
                     client.addChatMessage(ChatMessageType.GAMEMESSAGE,
                             "",
                             "A heat map is aleady generating. Please wait for it to complete.",
                             null);
+                } else {
+                    new Thread(new HeatMap(client, config)).start();
                 }
+
                 break;
         }
     }

@@ -9,9 +9,9 @@ import net.runelite.client.RuneLite;
 import javax.imageio.ImageIO;
 import java.awt.Color;
 import java.awt.Graphics2D;
+import java.awt.Paint;
 import java.awt.Point;
 import java.awt.RadialGradientPaint;
-import java.awt.geom.AffineTransform;
 import java.awt.geom.Ellipse2D;
 import java.awt.geom.Point2D;
 import java.awt.image.BufferedImage;
@@ -30,26 +30,27 @@ import java.util.HashMap;
 public class HeatMap implements Runnable {
 
     private final int PIXELS_PER_TILE = 4;
+
     private final int OFFSET_X = 1152;
     private final int OFFSET_Y = 1216;
 
-    private Client client;
-    private StatisticsConfig config;
+    private final Client CLIENT;
+    private final StatisticsConfig CONFIG;
 
-    public static boolean isGenerating = false;
+    static boolean isGenerating;
 
-    public HeatMap(Client client, StatisticsConfig config) {
-        this.client = client;
-        this.config = config;
+    HeatMap(Client client, StatisticsConfig config) {
+        CLIENT = client;
+        CONFIG = config;
     }
 
     @Override
     public void run() {
         try {
             isGenerating = true;
-            client.addChatMessage(ChatMessageType.GAMEMESSAGE, "","Heat map is generating...", null);
+            CLIENT.addChatMessage(ChatMessageType.GAMEMESSAGE, "","Heat map is generating...", null);
 
-            HashMap<Point, Integer> data = getData(new Database(config).retrieveXp("LordOfWoeBTW"));
+            HashMap<Point, Integer> data = getData(new Database(CONFIG).retrieveXp("LordOfWoeBTW"));
             BufferedImage map = ImageIO.read(getMap());
             Graphics2D graphics = map.createGraphics();
 
@@ -60,7 +61,7 @@ public class HeatMap implements Runnable {
                 // Instead of flipping the image vertically to account for origin differences, we subtract the point's
                 // vertical coordinate from the image's height.
                 point.y = map.getHeight() - point.y;
-                drawGradientCircle(graphics, point, config.heatMapDotSize(), dist, colors);
+                drawGradientCircle(graphics, point, CONFIG.heatMapDotSize(), dist, colors);
             });
 
             graphics.dispose();
@@ -68,17 +69,17 @@ public class HeatMap implements Runnable {
             File mapFile = new File(RuneLite.RUNELITE_DIR, "heatmap.png");
             ImageIO.write(map, "png", mapFile);
 
-            client.addChatMessage(ChatMessageType.GAMEMESSAGE, "","Heat map generation finished.", null);
+            CLIENT.addChatMessage(ChatMessageType.GAMEMESSAGE, "","Heat map generation finished.", null);
         } catch (SQLException | IOException e) {
             e.printStackTrace();
-            client.addChatMessage(ChatMessageType.GAMEMESSAGE, "","Heat map generation failed.", null);
+            CLIENT.addChatMessage(ChatMessageType.GAMEMESSAGE, "","Heat map generation failed.", null);
         } finally {
             isGenerating = false;
         }
     }
 
     private void drawGradientCircle(Graphics2D graphics, Point2D point, float radius, float[] dist, Color[] colors) {
-        RadialGradientPaint radialGradientPaint = new RadialGradientPaint(point, radius, dist, colors);
+        Paint radialGradientPaint = new RadialGradientPaint(point, radius, dist, colors);
         graphics.setPaint(radialGradientPaint);
         graphics.fill(new Ellipse2D.Double(point.getX() - radius, point.getY() - radius, radius * 2, radius * 2));
     }

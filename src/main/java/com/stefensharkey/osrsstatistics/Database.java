@@ -10,7 +10,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.util.Arrays;
-import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -21,7 +21,7 @@ public class Database {
     private String tableNameKills;
     private String tableNameXp;
 
-    public Database(StatisticsConfig config) {
+    Database(StatisticsConfig config) {
         updateConfig(config);
     }
 
@@ -63,7 +63,7 @@ public class Database {
         }
     }
 
-    public void insertKill(String username, Timestamp dateTime, String npcName, int npcLevel, int xCoord, int yCoord, int plane, int world) {
+    void insertKill(String username, Timestamp dateTime, String npcName, int npcLevel, int xCoord, int yCoord, int plane, int world) {
         String sql = "INSERT INTO " + tableNameKills +
                 " (username, update_time, npc_name, npc_level, x_coord, y_coord, plane, world) " +
                 "VALUES ('" + username + "', " +
@@ -78,7 +78,7 @@ public class Database {
         insert(sql);
     }
 
-    public void insertXp(String username, Timestamp dateTime, LinkedHashMap<Skill, Integer> skills, int xCoord, int yCoord, int plane, int world) {
+    void insertXp(String username, Timestamp dateTime, Map<Skill, Integer> skills, int xCoord, int yCoord, int plane, int world) {
         String sql = "INSERT INTO " + tableNameXp +
                 " (username, update_time, " +
                 skills.keySet().stream()
@@ -106,11 +106,11 @@ public class Database {
         }
     }
 
-    public ResultSet retrieveKill(String username) {
+    ResultSet retrieveKill(String username) {
         return retrieve("SELECT * FROM " + tableNameKills + " WHERE username = '" + username + "'");
     }
 
-    public ResultSet retrieveXp(String username) {
+    ResultSet retrieveXp(String username) {
         return retrieve("SELECT * FROM " + tableNameXp + " WHERE username = '" + username + "'");
     }
 
@@ -125,7 +125,8 @@ public class Database {
     }
 
 
-    public void updateConfig(StatisticsConfig config) {
+    @SuppressWarnings("HardcodedFileSeparator")
+    void updateConfig(StatisticsConfig config) {
         url = String.format("jdbc:%s://%s/%s?user=%s&password=%s",
                 config.databaseType().getName(),
                 config.databaseServerIp(),
