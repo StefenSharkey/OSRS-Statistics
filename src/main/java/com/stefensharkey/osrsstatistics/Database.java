@@ -10,6 +10,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -112,6 +113,40 @@ public class Database {
 
     ResultSet retrieveXp(String username) {
         return retrieve("SELECT * FROM " + tableNameXp + " WHERE username = '" + username + "'");
+    }
+
+    HashMap<Point3D, Float> retrieveXpCountMap(String username, boolean weighted, boolean modified) {
+        ResultSet results = retrieveXp(username);
+        HashMap<Point3D, Float> newData = new HashMap<>();
+
+        try {
+            while (results.next()) {
+                int x = results.getInt("x_coord");
+                int y = results.getInt("y_coord");
+                int plane = results.getInt("plane");
+                Point3D point = modified ? new Point3D(getModifiedX(x), getModifiedY(y), plane) : new Point3D(x, y, plane);
+                Float count = newData.get(point) == null ? 1.0F : newData.get(point) + 1;
+
+                newData.put(point, count);
+            }
+
+            if (weighted) {
+                newData.replaceAll((point3D, count) -> count / newData.size());
+            }
+
+            return newData;
+        } catch (SQLException e) {
+            log.error(e.getMessage());
+            return null;
+        }
+    }
+
+    private int getModifiedX (int x) {
+        return (x - 1152) * 4;
+    }
+
+    private int getModifiedY (int y) {
+        return (y - 1216) * 4;
     }
 
     private ResultSet retrieve(String sql) {

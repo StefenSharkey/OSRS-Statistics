@@ -3,7 +3,6 @@ package com.stefensharkey.osrsstatistics;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
-import net.runelite.api.Skill;
 import net.runelite.client.RuneLite;
 
 import javax.imageio.ImageIO;
@@ -21,27 +20,21 @@ import java.io.IOException;
 import java.net.URL;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.util.Arrays;
 import java.util.HashMap;
 
 @Slf4j
 public class HeatMap implements Runnable {
 
-    private final int PIXELS_PER_TILE = 4;
-
-    private final int OFFSET_X = 1152;
-    private final int OFFSET_Y = 1216;
-
     private final Client CLIENT;
     private final StatisticsConfig CONFIG;
+    private final Database DATABASE;
 
     static boolean isGenerating;
 
     HeatMap(Client client, StatisticsConfig config) {
         CLIENT = client;
         CONFIG = config;
+        DATABASE = new Database(config);
     }
 
     @Override
@@ -50,7 +43,7 @@ public class HeatMap implements Runnable {
             isGenerating = true;
             CLIENT.addChatMessage(ChatMessageType.GAMEMESSAGE, "","Heat map is generating...", null);
 
-            HashMap<Point, Integer> data = getData(new Database(CONFIG).retrieveXp("LordOfWoeBTW"));
+            HashMap<Point3D, Float> data = DATABASE.retrieveXpCountMap("LordOfWoeBTW", false, true);
             BufferedImage map = ImageIO.read(getMap());
             Graphics2D graphics = map.createGraphics();
 
@@ -61,7 +54,7 @@ public class HeatMap implements Runnable {
                 // Instead of flipping the image vertically to account for origin differences, we subtract the point's
                 // vertical coordinate from the image's height.
                 point.y = map.getHeight() - point.y;
-                drawGradientCircle(graphics, point, CONFIG.heatMapDotSize(), dist, colors);
+                drawGradientCircle(graphics, new Point(point.x, point.y), CONFIG.heatMapDotSize(), dist, colors);
             });
 
             graphics.dispose();
@@ -70,8 +63,9 @@ public class HeatMap implements Runnable {
             ImageIO.write(map, "png", mapFile);
 
             CLIENT.addChatMessage(ChatMessageType.GAMEMESSAGE, "","Heat map generation finished.", null);
-        } catch (SQLException | IOException e) {
-            e.printStackTrace();
+        } catch (IOException e) {
+            log.error(e.getMessage());
+
             CLIENT.addChatMessage(ChatMessageType.GAMEMESSAGE, "","Heat map generation failed.", null);
         } finally {
             isGenerating = false;
@@ -82,27 +76,6 @@ public class HeatMap implements Runnable {
         Paint radialGradientPaint = new RadialGradientPaint(point, radius, dist, colors);
         graphics.setPaint(radialGradientPaint);
         graphics.fill(new Ellipse2D.Double(point.getX() - radius, point.getY() - radius, radius * 2, radius * 2));
-    }
-
-    private HashMap<Point, Integer> getData(ResultSet results) throws SQLException {
-        HashMap<Point, Integer> newData = new HashMap<>();
-
-        while (results.next()) {
-            Point point = new Point((int) Math.round(getModifiedX(results.getInt("x_coord"))),
-                    (int) Math.round(getModifiedY(results.getInt("y_coord"))));
-
-            int newLength = Skill.values().length - 1;
-            Skill[] skills = Arrays.copyOf(Skill.values(), newLength);
-            int sum = 0;
-
-            for (Skill skill : skills) {
-                sum += results.getInt(skill.getName().toLowerCase());
-            }
-
-            newData.put(point, sum);
-        }
-
-        return newData;
     }
 
     private File getMap() {
