@@ -8,9 +8,12 @@ import net.runelite.api.GameState;
 import net.runelite.api.NPC;
 import net.runelite.api.Player;
 import net.runelite.api.Skill;
+import net.runelite.api.Tile;
 import net.runelite.api.coords.WorldPoint;
+import net.runelite.api.events.ClientTick;
 import net.runelite.api.events.CommandExecuted;
 import net.runelite.api.events.GameStateChanged;
+import net.runelite.api.events.GameTick;
 import net.runelite.api.events.NpcDespawned;
 import net.runelite.api.events.StatChanged;
 import net.runelite.client.config.ConfigManager;
@@ -23,6 +26,7 @@ import net.runelite.client.ui.overlay.OverlayManager;
 import javax.inject.Inject;
 import java.sql.Timestamp;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 
 @Slf4j
@@ -61,6 +65,23 @@ public class StatisticsPlugin extends Plugin {
         overlayManager.remove(overlay);
         log.info("Statistics stopped!");
     }
+
+//    @Subscribe
+//    public void onClientTick(ClientTick gameTick) {
+//        HashMap<WorldPoint, HashMap<Skill, Integer>> xpMap = database.retrieveXpMap(client.getUsername(), false);
+//        Tile selectedTile = client.getSelectedSceneTile();
+//
+//        if (selectedTile != null) {
+//            HashMap<Skill, Integer> xpTile = xpMap.get(selectedTile.getWorldLocation());
+//
+//            if (xpTile != null) {
+//                final String[] message = {"{"};
+//                xpTile.forEach((skill, xp) -> message[0] += skill.getName() + "=" + xp);
+//                message[0] += "}";
+//                log.info(message[0]);
+//            }
+//        }
+//    }
 
     @Subscribe
     public void onStatChanged(StatChanged statChanged) {

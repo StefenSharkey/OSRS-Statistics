@@ -6,6 +6,7 @@ import net.runelite.api.Client;
 import net.runelite.api.Perspective;
 import net.runelite.api.Player;
 import net.runelite.api.coords.LocalPoint;
+import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.ui.overlay.Overlay;
 import net.runelite.client.ui.overlay.OverlayLayer;
 import net.runelite.client.ui.overlay.OverlayPosition;
@@ -29,7 +30,7 @@ public class StatisticsOverlay extends Overlay {
     private final StatisticsConfig CONFIG;
     private final Database DATABASE;
 
-    private HashMap<Point3D, Float> xpTiles;
+    private HashMap<WorldPoint, Integer> xpTiles;
     private Date lastUpdated;
 
     @Inject
@@ -48,9 +49,11 @@ public class StatisticsOverlay extends Overlay {
         updateTiles();
 
         if (CONFIG.displayXpTileOverlay()) {
+            log.info("Overlay is enabled.");
             Player player = CLIENT.getLocalPlayer();
 
-            if (player != null) {
+            if (player != null && xpTiles != null) {
+                log.info("Player and xpTiles are not null.");
                 renderTiles(graphics, player);
             }
         }
@@ -61,16 +64,19 @@ public class StatisticsOverlay extends Overlay {
     private void renderTiles(Graphics2D graphics, Actor player) {
         LocalPoint localLocation = player.getLocalLocation();
 
-        if (xpTiles != null) {
-            xpTiles.forEach((point, value) -> {
-                LocalPoint tileLocation = LocalPoint.fromWorld(CLIENT, point.x, point.y);
-                int plane = point.plane;
+        xpTiles.forEach((point, value) -> {
+            LocalPoint tileLocation = LocalPoint.fromWorld(CLIENT, point);
 
-                if (tileLocation != null && plane == CLIENT.getPlane() && localLocation.distanceTo(tileLocation) <= MAX_DISTANCE) {
+            if (tileLocation != null) {
+                log.info("Tile location is not null.");
+
+                if (localLocation.distanceTo(tileLocation) <= MAX_DISTANCE) {
+                    log.info(("Location is valid."));
+
                     renderTile(graphics, tileLocation, value);
                 }
-            });
-        }
+            }
+        });
     }
 
     private void renderTile(Graphics2D graphics, LocalPoint tileLocation, float value) {
@@ -78,6 +84,7 @@ public class StatisticsOverlay extends Overlay {
 
         if (polygon != null) {
             OverlayUtil.renderPolygon(graphics, polygon, getHeatMapColor(value));
+            log.info("Rendered tile.");
         }
     }
 
@@ -88,25 +95,23 @@ public class StatisticsOverlay extends Overlay {
         // local XP map and make note of it.
         if (player != null && (lastUpdated == null || lastUpdated.before(PLUGIN.lastUpdated))) {
             lastUpdated = PLUGIN.lastUpdated;
-            xpTiles = DATABASE.retrieveXpCountMap(player.getName(), true, false);
+            xpTiles = DATABASE.retrieveXpCountMap(player.getName(), true);
+            log.info("XP tiles updated.");
         }
     }
 
     private Color getHeatMapColor (float value) {
-        int numColors = 3;
         float[][] colors = { { 0, 0, 1 }, { 0, 1, 0 }, { 1, 1, 0 }, { 1, 0, 0 } };
+        int numColors = colors.length - 1;
 
-        int index1;
-        int index2;
+        int index1 = 0;
+        int index2 = 0;
         float fractionBetween = 0;
 
-        if (value <= 0) {
-            index1 = 0;
-            index2 = 0;
-        } else if (value >= 1) {
+        if (value >= 1) {
             index1 = numColors;
             index2 = numColors;
-        } else {
+        } else if (value > 0){
             value *= numColors;
             index1 = (int) Math.floor(value);
             index2 = index1 + 1;

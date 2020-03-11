@@ -2,6 +2,7 @@ package com.stefensharkey.osrsstatistics;
 
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Skill;
+import net.runelite.api.coords.WorldPoint;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -22,6 +23,10 @@ public class Database {
     private String tableNameKills;
     private String tableNameXp;
 
+    Stream<String> skillStream = Stream.of(Arrays.copyOf(Skill.values(), Skill.values().length - 1))
+            .map(Skill::getName)
+            .map(String::toLowerCase);
+
     Database(StatisticsConfig config) {
         updateConfig(config);
     }
@@ -29,10 +34,7 @@ public class Database {
     private void createDatabase() {
         try (Connection connection = DriverManager.getConnection(url)) {
             if (connection != null) {
-                String skills = Stream.of(Arrays.copyOf(Skill.values(), Skill.values().length - 1))
-                        .map(Skill::getName)
-                        .map(String::toLowerCase)
-                        .collect(Collectors.joining(" INT UNSIGNED NOT NULL, "));
+                String skills = skillStream.collect(Collectors.joining(" INT UNSIGNED NOT NULL, "));
 
                 connection.createStatement().execute(
                         "CREATE TABLE IF NOT EXISTS " + tableNameXp + " (" +
@@ -82,10 +84,7 @@ public class Database {
     void insertXp(String username, Timestamp dateTime, Map<Skill, Integer> skills, int xCoord, int yCoord, int plane, int world) {
         String sql = "INSERT INTO " + tableNameXp +
                 " (username, update_time, " +
-                skills.keySet().stream()
-                        .map(Skill::getName)
-                        .map(String::toLowerCase)
-                        .collect(Collectors.joining(", ")) + ", " +
+                skillStream.collect(Collectors.joining(", ")) + ", " +
                 "x_coord, y_coord, plane, world) " +
                 "VALUES ('" + username + "', " +
                 "'" + dateTime + "', " +
@@ -115,31 +114,67 @@ public class Database {
         return retrieve("SELECT * FROM " + tableNameXp + " WHERE username = '" + username + "'");
     }
 
-    HashMap<Point3D, Float> retrieveXpCountMap(String username, boolean weighted, boolean modified) {
+    HashMap<WorldPoint, HashMap<Skill, Integer>> retrieveXpMap(String username, boolean modifiedPoints) {
         ResultSet results = retrieveXp(username);
-        HashMap<Point3D, Float> newData = new HashMap<>();
+        HashMap<WorldPoint, HashMap<Skill, Integer>> map = new HashMap<>();
 
         try {
             while (results.next()) {
                 int x = results.getInt("x_coord");
                 int y = results.getInt("y_coord");
                 int plane = results.getInt("plane");
-                Point3D point = modified ? new Point3D(getModifiedX(x), getModifiedY(y), plane) : new Point3D(x, y, plane);
-                Float count = newData.get(point) == null ? 1.0F : newData.get(point) + 1;
+                WorldPoint point = modifiedPoints ? new WorldPoint(getModifiedX(x), getModifiedY(y), plane) : new WorldPoint(x, y, plane);
+                HashMap<Skill, Integer> skillXpMap = new HashMap<>();
 
-                newData.put(point, count);
+                skillStream.forEach(skillName -> {
+                    try {
+                        skillXpMap.put(Skill.valueOf(skillName), results.getInt(skillName));
+                    } catch (SQLException e) {
+                        e.printStackTrace();
+                    }
+                });
+
+                map.put(point, skillXpMap);
             }
 
-            if (weighted) {
-                newData.replaceAll((point3D, count) -> count / newData.size());
-            }
-
-            return newData;
+            return map;
         } catch (SQLException e) {
             log.error(e.getMessage());
             return null;
         }
     }
+
+    HashMap<WorldPoint, Integer> retrieveXpCountMap(String username, boolean modifiedPoints) {
+        ResultSet results = retrieveXp(username);
+        HashMap<WorldPoint, Integer> map = new HashMap<>();
+
+        try {
+            while (results.next()) {
+                int x = results.getInt("x_coord");
+                int y = results.getInt("y_coord");
+                int plane = results.getInt("plane");
+                WorldPoint point = modifiedPoints ? new WorldPoint(getModifiedX(x), getModifiedY(y), plane) : new WorldPoint(x, y, plane);
+                int count = map.get(point) == null ? 1 : map.get(point) + 1;
+
+                log.info("{point.x={}, point.y={}, point.plane={}", point.getX(), point.getY(), point.getPlane());
+
+                map.put(point, count);
+            }
+
+            return map;
+        } catch (SQLException e) {
+            log.error(e.getMessage());
+            return null;
+        }
+    }
+
+    HashMap<WorldPoint, Float> retrieveXpCountWeightedMap(String username, boolean modifiedPoints) {
+        HashMap<WorldPoint, Integer> originalMap = retrieveXpCountMap(username, modifiedPoints);
+        HashMap<WorldPoint, Float> newMap = new HashMap<>();
+        originalMap.forEach((key, value) -> newMap.put(key, (float) value / originalMap.size()));
+        return newMap;
+    }
+
 
     private int getModifiedX (int x) {
         return (x - 1152) * 4;
