@@ -54,7 +54,7 @@ public class HeatMap implements Runnable {
                 // Instead of flipping the image vertically to account for origin differences, we subtract the point's
                 // vertical coordinate from the image's height.
                 point.y = map.getHeight() - point.y;
-                drawGradientCircle(graphics, new Point(point.x, point.y), CONFIG.heatMapDotSize(), dist, colors);
+                drawGradientCircle(graphics, point.toAwtPoint(), CONFIG.heatMapDotSize(), dist, colors);
             });
 
             graphics.dispose();
