@@ -94,12 +94,4 @@ public class HeatMap implements Runnable {
 
         return file;
     }
-
-    private double getModifiedX (int x) {
-        return (x - OFFSET_X) * PIXELS_PER_TILE;
-    }
-
-    private double getModifiedY (int y) {
-        return (y - OFFSET_Y) * PIXELS_PER_TILE;
-    }
 }

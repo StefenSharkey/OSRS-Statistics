@@ -18,6 +18,7 @@ import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
+import net.runelite.client.ui.overlay.OverlayManager;
 
 import javax.inject.Inject;
 import java.sql.Timestamp;
@@ -34,20 +35,30 @@ public class StatisticsPlugin extends Plugin {
     private Client client;
 
     @Inject
+    private OverlayManager overlayManager;
+
+    @Inject
     private StatisticsConfig config;
+
+    @Inject
+    private StatisticsOverlay overlay;
 
     private final LinkedHashMap<Skill, Integer> skillXpCache = new LinkedHashMap<>();
 
     private Database database;
 
+    Date lastUpdated = new Date();
+
     @Override
     protected void startUp() {
-        log.info("Statistics started!");
         database = new Database(config);
+        overlayManager.add(overlay);
+        log.info("Statistics started!");
     }
 
     @Override
     protected void shutDown() {
+        overlayManager.remove(overlay);
         log.info("Statistics stopped!");
     }
 
@@ -88,6 +99,8 @@ public class StatisticsPlugin extends Plugin {
                                 location.getY(),
                                 location.getPlane(),
                                 client.getWorld());
+
+                        lastUpdated = new Date();
                     } else {
                         log.error("Player does not exist.");
                     }
@@ -98,11 +111,13 @@ public class StatisticsPlugin extends Plugin {
 
     @Subscribe
     public void onGameStateChanged(GameStateChanged gameStateChanged) {
+        GameState gameState = gameStateChanged.getGameState();
+
         /* In order to accurately maintain XP cache, we must reset the cache only as the user is logging in.
            If we use GameState.LOGGED_IN instead we would occasionally reset the cache without re-initializing it. This
            is because, when the user does certain actions such as loading into a new region, this method is fired for
            GameState.LOGGED_IN, without firing GameStatChanged event for all skills. */
-        if (gameStateChanged.getGameState() == GameState.LOGGING_IN) {
+        if (gameState == GameState.LOGGING_IN) {
             log.info("Resetting XP cache.");
             clearXpCache();
         }

@@ -72,4 +72,13 @@ public interface StatisticsConfig extends Config {
     default int heatMapDotSize() {
         return 25;
     }
+
+    @ConfigItem(
+            keyName = "displayxptileoverlay",
+            name = "Display XP Tile Overlay",
+            description = "Display overlay over tiles XP was received on."
+    )
+    default boolean displayXpTileOverlay() {
+        return true;
+    }
 }
