@@ -44,7 +44,7 @@ public class HeatMap implements Runnable {
             isGenerating = true;
             CLIENT.addChatMessage(ChatMessageType.GAMEMESSAGE, "","Heat map is generating...", null);
 
-            HashMap<WorldPoint, Float> data = DATABASE.retrieveXpCountMap("LordOfWoeBTW", false, true);
+            HashMap<WorldPoint, Float> data = DATABASE.retrieveXpCountMap(CLIENT.getUsername(), false, true);
             BufferedImage map = ImageIO.read(getMap());
             Graphics2D graphics = map.createGraphics();
 
