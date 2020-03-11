@@ -6,6 +6,7 @@ import net.runelite.api.Client;
 import net.runelite.api.Perspective;
 import net.runelite.api.Player;
 import net.runelite.api.coords.LocalPoint;
+import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.ui.overlay.Overlay;
 import net.runelite.client.ui.overlay.OverlayLayer;
 import net.runelite.client.ui.overlay.OverlayPosition;
@@ -29,7 +30,7 @@ public class StatisticsOverlay extends Overlay {
     private final StatisticsConfig CONFIG;
     private final Database DATABASE;
 
-    private HashMap<Point3D, Float> xpTiles;
+    private HashMap<WorldPoint, Float> xpTiles;
     private Date lastUpdated;
 
     @Inject
@@ -63,8 +64,8 @@ public class StatisticsOverlay extends Overlay {
 
         if (xpTiles != null) {
             xpTiles.forEach((point, value) -> {
-                LocalPoint tileLocation = LocalPoint.fromWorld(CLIENT, point.x, point.y);
-                int plane = point.plane;
+                LocalPoint tileLocation = LocalPoint.fromWorld(CLIENT, point.getX(), point.getY());
+                int plane = point.getPlane();
 
                 if (tileLocation != null && plane == CLIENT.getPlane() && localLocation.distanceTo(tileLocation) <= MAX_DISTANCE) {
                     renderTile(graphics, tileLocation, value);

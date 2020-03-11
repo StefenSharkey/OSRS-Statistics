@@ -2,6 +2,7 @@ package com.stefensharkey.osrsstatistics;
 
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Skill;
+import net.runelite.api.coords.WorldPoint;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -115,17 +116,17 @@ public class Database {
         return retrieve("SELECT * FROM " + tableNameXp + " WHERE username = '" + username + "'");
     }
 
-    HashMap<Point3D, Float> retrieveXpCountMap(String username, boolean weighted, boolean modified) {
+    HashMap<WorldPoint, Float> retrieveXpCountMap(String username, boolean weighted, boolean modified) {
         ResultSet results = retrieveXp(username);
-        HashMap<Point3D, Float> newData = new HashMap<>();
+        HashMap<WorldPoint, Float> newData = new HashMap<>();
 
         try {
             while (results.next()) {
                 int x = results.getInt("x_coord");
                 int y = results.getInt("y_coord");
                 int plane = results.getInt("plane");
-                Point3D point = modified ? new Point3D(getModifiedX(x), getModifiedY(y), plane) : new Point3D(x, y, plane);
-                Float count = newData.get(point) == null ? 1.0F : newData.get(point) + 1;
+                WorldPoint point = modified ? new WorldPoint(getModifiedX(x), getModifiedY(y), plane) : new WorldPoint(x, y, plane);
+                float count = newData.getOrDefault(point, 0.0F) + 1.0F;
 
                 newData.put(point, count);
             }
@@ -133,6 +134,8 @@ public class Database {
             if (weighted) {
                 newData.replaceAll((point3D, count) -> count / newData.size());
             }
+
+            log.info(String.valueOf(newData));
 
             return newData;
         } catch (SQLException e) {

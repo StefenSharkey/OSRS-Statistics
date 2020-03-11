@@ -3,6 +3,7 @@ package com.stefensharkey.osrsstatistics;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
+import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.RuneLite;
 
 import javax.imageio.ImageIO;
@@ -43,7 +44,7 @@ public class HeatMap implements Runnable {
             isGenerating = true;
             CLIENT.addChatMessage(ChatMessageType.GAMEMESSAGE, "","Heat map is generating...", null);
 
-            HashMap<Point3D, Float> data = DATABASE.retrieveXpCountMap("LordOfWoeBTW", false, true);
+            HashMap<WorldPoint, Float> data = DATABASE.retrieveXpCountMap("LordOfWoeBTW", false, true);
             BufferedImage map = ImageIO.read(getMap());
             Graphics2D graphics = map.createGraphics();
 
@@ -53,8 +54,7 @@ public class HeatMap implements Runnable {
             data.forEach((point, xpValue) -> {
                 // Instead of flipping the image vertically to account for origin differences, we subtract the point's
                 // vertical coordinate from the image's height.
-                point.y = map.getHeight() - point.y;
-                drawGradientCircle(graphics, point.toAwtPoint(), CONFIG.heatMapDotSize(), dist, colors);
+                drawGradientCircle(graphics, new Point(point.getX(), map.getHeight() - point.getY()), CONFIG.heatMapDotSize(), dist, colors);
             });
 
             graphics.dispose();
