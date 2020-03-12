@@ -81,4 +81,13 @@ public interface StatisticsConfig extends Config {
     default boolean displayXpTileOverlay() {
         return true;
     }
+
+    @ConfigItem(
+            keyName = "displayxptotal",
+            name = "XP Total on Overlay",
+            description = "Display XP total per tile instead of number of times XP gained."
+    )
+    default boolean displayXpTotal() {
+        return true;
+    }
 }

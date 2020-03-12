@@ -5,6 +5,7 @@ import net.runelite.api.Actor;
 import net.runelite.api.Client;
 import net.runelite.api.Perspective;
 import net.runelite.api.Player;
+import net.runelite.api.Skill;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.ui.overlay.Overlay;
@@ -18,6 +19,7 @@ import java.awt.Dimension;
 import java.awt.Graphics2D;
 import java.awt.Polygon;
 import java.util.Date;
+import java.util.EnumMap;
 import java.util.HashMap;
 
 @Slf4j
@@ -30,8 +32,10 @@ public class StatisticsOverlay extends Overlay {
     private final StatisticsConfig CONFIG;
     private final Database DATABASE;
 
-    private HashMap<WorldPoint, Float> xpTiles;
+    private HashMap<WorldPoint, ?> xpTiles;
     private Date lastUpdated;
+
+    private boolean displayXpTotal;
 
     @Inject
     StatisticsOverlay(Client client, StatisticsPlugin plugin, StatisticsConfig config) {
@@ -41,6 +45,7 @@ public class StatisticsOverlay extends Overlay {
         PLUGIN = plugin;
         CONFIG = config;
         DATABASE = new Database(config);
+        displayXpTotal = CONFIG.displayXpTotal();
         updateTiles();
     }
 
@@ -74,11 +79,19 @@ public class StatisticsOverlay extends Overlay {
         }
     }
 
-    private void renderTile(Graphics2D graphics, LocalPoint tileLocation, float value) {
+    private void renderTile(Graphics2D graphics, LocalPoint tileLocation, Object value) {
         Polygon polygon = Perspective.getCanvasTilePoly(CLIENT, tileLocation);
 
         if (polygon != null) {
-            OverlayUtil.renderPolygon(graphics, polygon, getHeatMapColor(value));
+            float[] renderValue = {0.0F};
+
+            if (value instanceof Float) {
+                renderValue[0] = (float) value;
+            } else if (value instanceof EnumMap) {
+                ((EnumMap<Skill, Float>) value).forEach((skill, xpValue) -> renderValue[0] += xpValue);
+            }
+
+            OverlayUtil.renderPolygon(graphics, polygon, getHeatMapColor(renderValue[0]));
         }
     }
 
@@ -87,9 +100,13 @@ public class StatisticsOverlay extends Overlay {
 
         // If the player exists, and has received an XP update since the overlay last checked for one, repopulate the
         // local XP map and make note of it.
-        if (player != null && (lastUpdated == null || lastUpdated.before(PLUGIN.lastUpdated))) {
+        if (player != null && (lastUpdated == null || lastUpdated.before(PLUGIN.lastUpdated) || displayXpTotal != CONFIG.displayXpTotal())) {
             lastUpdated = PLUGIN.lastUpdated;
-            xpTiles = DATABASE.retrieveXpCountMap(player.getName(), true, false);
+            displayXpTotal = CONFIG.displayXpTotal();
+
+            xpTiles = displayXpTotal
+                    ? DATABASE.retrieveXpTotalMap(player.getName(), true, false)
+                    : DATABASE.retrieveXpCountMap(player.getName(), true, false);
         }
     }
 

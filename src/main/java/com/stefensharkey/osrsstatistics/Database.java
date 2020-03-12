@@ -147,10 +147,10 @@ public class Database {
         }
     }
 
-    HashMap<WorldPoint, EnumMap<Skill, Integer>> retrieveXpTotalMap(String username, boolean weighted, boolean modifiedPoints) {
+    HashMap<WorldPoint, EnumMap<Skill, Float>> retrieveXpTotalMap(String username, boolean weighted, boolean modifiedPoints) {
         ResultSet results = retrieveXp(username);
-        HashMap<WorldPoint, EnumMap<Skill, Integer>> map = new HashMap<>();
-        int[] max = {0};
+        HashMap<WorldPoint, EnumMap<Skill, Float>> map = new HashMap<>();
+        float[] max = {0};
 
         try {
             while (results.next()) {
@@ -158,17 +158,17 @@ public class Database {
                 int y = results.getInt("y_coord");
                 int plane = results.getInt("plane");
                 WorldPoint point = modifiedPoints ? new WorldPoint(getModifiedX(x), getModifiedY(y), plane) : new WorldPoint(x, y, plane);
-                EnumMap<Skill, Integer> skillXpMap = new EnumMap<>(Skill.class);
+                EnumMap<Skill, Float> skillXpMap = new EnumMap<>(Skill.class);
 
                 SKILLS.get().forEach(skillName -> {
                     try {
-                        int xpValue = results.getInt(skillName);
+                        float xpValue = results.getInt(skillName);
 
                         if (xpValue > max[0]) {
                             max[0] = xpValue;
                         }
 
-                        skillXpMap.put(Skill.valueOf(skillName), xpValue);
+                        skillXpMap.put(Skill.valueOf(skillName.toUpperCase()), xpValue);
                     } catch (SQLException e) {
                         e.printStackTrace();
                     }
