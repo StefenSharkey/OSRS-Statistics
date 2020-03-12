@@ -6,12 +6,15 @@ import net.runelite.api.Client;
 import net.runelite.api.Perspective;
 import net.runelite.api.Player;
 import net.runelite.api.Skill;
+import net.runelite.api.Tile;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.ui.overlay.Overlay;
 import net.runelite.client.ui.overlay.OverlayLayer;
 import net.runelite.client.ui.overlay.OverlayPosition;
 import net.runelite.client.ui.overlay.OverlayUtil;
+import net.runelite.client.ui.overlay.tooltip.Tooltip;
+import net.runelite.client.ui.overlay.tooltip.TooltipManager;
 
 import javax.inject.Inject;
 import java.awt.Color;
@@ -20,7 +23,8 @@ import java.awt.Graphics2D;
 import java.awt.Polygon;
 import java.util.Date;
 import java.util.EnumMap;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 @Slf4j
 public class StatisticsOverlay extends Overlay {
@@ -30,20 +34,24 @@ public class StatisticsOverlay extends Overlay {
     private final Client CLIENT;
     private final StatisticsPlugin PLUGIN;
     private final StatisticsConfig CONFIG;
+    private final TooltipManager TOOLTIP_MANAGER;
     private final Database DATABASE;
 
-    private HashMap<WorldPoint, ?> xpTiles;
+    private LinkedHashMap<WorldPoint, EnumMap<Skill, Integer>> xpDeltaMap;
+    private LinkedHashMap<WorldPoint, EnumMap<Skill, Double>> xpTotalMap;
+    private LinkedHashMap<WorldPoint, Double> xpCountMap;
     private Date lastUpdated;
 
     private boolean displayXpTotal;
 
     @Inject
-    StatisticsOverlay(Client client, StatisticsPlugin plugin, StatisticsConfig config) {
+    StatisticsOverlay(Client client, StatisticsPlugin plugin, StatisticsConfig config, TooltipManager tooltipManager) {
         setPosition(OverlayPosition.DYNAMIC);
         setLayer(OverlayLayer.ABOVE_SCENE);
         CLIENT = client;
         PLUGIN = plugin;
         CONFIG = config;
+        TOOLTIP_MANAGER = tooltipManager;
         DATABASE = new Database(config);
         displayXpTotal = CONFIG.displayXpTotal();
         updateTiles();
@@ -59,6 +67,42 @@ public class StatisticsOverlay extends Overlay {
             if (player != null) {
                 renderTiles(graphics, player);
             }
+
+            Tile selectedTile = CLIENT.getSelectedSceneTile();
+            if (selectedTile != null) {
+                WorldPoint worldPoint = selectedTile.getWorldLocation();
+
+                if (xpDeltaMap.containsKey(worldPoint)) {
+                    StringBuilder tooltip = new StringBuilder()
+                            .append("X: ").append(worldPoint.getX())
+                            .append(", Y: ").append(worldPoint.getY())
+                            .append(", Plane: ").append(worldPoint.getPlane())
+                            .append("</br>");
+
+                    for (Map.Entry<WorldPoint, EnumMap<Skill, Integer>> entry : xpDeltaMap.entrySet()) {
+                        log.info(entry.toString());
+
+                        if (WorldPointHelper.equals(entry.getKey(), worldPoint)) {
+                            for (Map.Entry<Skill, Integer> entry1 : entry.getValue().entrySet()) {
+                                tooltip.append(entry1.getKey().getName()).append(": ").append(entry1.getValue()).append("</br>");
+                            }
+                        }
+                    }
+
+//                    xpTotalMap
+//                            .entrySet()
+//                            .stream()
+//                            .filter(e -> WorldPointHelper.equals(e.getKey(), worldLocation))
+//                            .collect(Collectors.toSet())
+//                            .stream()
+//                            .map(Map.Entry::getValue)
+//                            .collect(Collectors.toList())
+
+                    tooltip.substring(0, tooltip.lastIndexOf("</br>"));
+
+                    TOOLTIP_MANAGER.add(new Tooltip(tooltip.toString()));
+                }
+            }
         }
 
         return null;
@@ -66,9 +110,14 @@ public class StatisticsOverlay extends Overlay {
 
     private void renderTiles(Graphics2D graphics, Actor player) {
         LocalPoint localLocation = player.getLocalLocation();
+        LinkedHashMap<WorldPoint, ?> map = null;
 
-        if (xpTiles != null) {
-            xpTiles.forEach((point, value) -> {
+        if (xpCountMap != null && xpTotalMap != null) {
+            map = CONFIG.displayXpTotal() ? xpTotalMap : xpCountMap;
+        }
+
+        if (map != null) {
+            map.forEach((point, value) -> {
                 LocalPoint tileLocation = LocalPoint.fromWorld(CLIENT, point.getX(), point.getY());
                 int plane = point.getPlane();
 
@@ -83,15 +132,15 @@ public class StatisticsOverlay extends Overlay {
         Polygon polygon = Perspective.getCanvasTilePoly(CLIENT, tileLocation);
 
         if (polygon != null) {
-            float[] renderValue = {0.0F};
+            Double[] renderValue = {0.0};
 
-            if (value instanceof Float) {
-                renderValue[0] = (float) value;
-            } else if (value instanceof EnumMap) {
-                ((EnumMap<Skill, Float>) value).forEach((skill, xpValue) -> renderValue[0] += xpValue);
+            if (CONFIG.displayXpTotal()) {
+                ((EnumMap<Skill, Double>) value).forEach((skill, xpValue) -> renderValue[0] += xpValue);
+            } else {
+                renderValue[0] = (double) value;
             }
 
-            OverlayUtil.renderPolygon(graphics, polygon, getHeatMapColor(renderValue[0]));
+            OverlayUtil.renderPolygon(graphics, polygon, getHeatMapColor(renderValue[0].floatValue()));
         }
     }
 
@@ -104,9 +153,9 @@ public class StatisticsOverlay extends Overlay {
             lastUpdated = PLUGIN.lastUpdated;
             displayXpTotal = CONFIG.displayXpTotal();
 
-            xpTiles = displayXpTotal
-                    ? DATABASE.retrieveXpTotalMap(player.getName(), true, false)
-                    : DATABASE.retrieveXpCountMap(player.getName(), true, false);
+            xpDeltaMap = DATABASE.retrieveXpDeltaMap(player.getName(), false);
+            xpTotalMap = DATABASE.retrieveXpTotalMap(player.getName(), true, false);
+            xpCountMap = DATABASE.retrieveXpCountMap(player.getName(), true, false);
         }
     }
 

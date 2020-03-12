@@ -21,7 +21,7 @@ import java.io.IOException;
 import java.net.URL;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 
 @Slf4j
 public class HeatMap implements Runnable {
@@ -44,7 +44,7 @@ public class HeatMap implements Runnable {
             isGenerating = true;
             CLIENT.addChatMessage(ChatMessageType.GAMEMESSAGE, "","Heat map is generating...", null);
 
-            HashMap<WorldPoint, Float> data = DATABASE.retrieveXpCountMap(CLIENT.getUsername(), false, true);
+            LinkedHashMap<WorldPoint, Double> data = DATABASE.retrieveXpCountMap(CLIENT.getUsername(), false, true);
             BufferedImage map = ImageIO.read(getMap());
             Graphics2D graphics = map.createGraphics();
 

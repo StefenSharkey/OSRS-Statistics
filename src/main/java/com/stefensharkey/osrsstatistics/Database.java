@@ -12,7 +12,7 @@ import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.util.Arrays;
 import java.util.EnumMap;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -116,10 +116,10 @@ public class Database {
         return retrieve("SELECT * FROM " + tableNameXp + " WHERE username = '" + username + "'");
     }
 
-    HashMap<WorldPoint, Float> retrieveXpCountMap(String username, boolean weighted, boolean modifiedPoints) {
+    LinkedHashMap<WorldPoint, Double> retrieveXpCountMap(String username, boolean weighted, boolean modifiedPoints) {
         ResultSet results = retrieveXp(username);
-        HashMap<WorldPoint, Float> map = new HashMap<>();
-        float[] max = {0.0F};
+        LinkedHashMap<WorldPoint, Double> map = new LinkedHashMap<>();
+        double[] max = {0.0F};
 
         try {
             while (results.next()) {
@@ -127,7 +127,7 @@ public class Database {
                 int y = results.getInt("y_coord");
                 int plane = results.getInt("plane");
                 WorldPoint point = modifiedPoints ? new WorldPoint(getModifiedX(x), getModifiedY(y), plane) : new WorldPoint(x, y, plane);
-                float sum = map.getOrDefault(point, 0.0F) + 1.0F;
+                double sum = map.getOrDefault(point, 0.0) + 1.0;
 
                 if (sum > max[0]) {
                     max[0] = sum;
@@ -147,10 +147,10 @@ public class Database {
         }
     }
 
-    HashMap<WorldPoint, EnumMap<Skill, Float>> retrieveXpTotalMap(String username, boolean weighted, boolean modifiedPoints) {
+    LinkedHashMap<WorldPoint, EnumMap<Skill, Double>> retrieveXpTotalMap(String username, boolean weighted, boolean modifiedPoints) {
         ResultSet results = retrieveXp(username);
-        HashMap<WorldPoint, EnumMap<Skill, Float>> map = new HashMap<>();
-        float[] max = {0};
+        LinkedHashMap<WorldPoint, EnumMap<Skill, Double>> map = new LinkedHashMap<>();
+        double[] max = {0};
 
         try {
             while (results.next()) {
@@ -158,11 +158,11 @@ public class Database {
                 int y = results.getInt("y_coord");
                 int plane = results.getInt("plane");
                 WorldPoint point = modifiedPoints ? new WorldPoint(getModifiedX(x), getModifiedY(y), plane) : new WorldPoint(x, y, plane);
-                EnumMap<Skill, Float> skillXpMap = new EnumMap<>(Skill.class);
+                EnumMap<Skill, Double> skillXpMap = new EnumMap<>(Skill.class);
 
-                SKILLS.get().forEach(skillName -> {
+                SKILLS.get().collect(Collectors.toSet()).forEach(skillName -> {
                     try {
-                        float xpValue = results.getInt(skillName);
+                        double xpValue = results.getInt(skillName);
 
                         if (xpValue > max[0]) {
                             max[0] = xpValue;
@@ -179,6 +179,49 @@ public class Database {
 
             if (weighted && max[0] > 0) {
                 map.forEach((point, skillMap) -> skillMap.replaceAll((skill, value) -> value / max[0]));
+            }
+
+            return map;
+        } catch (SQLException e) {
+            log.error(e.getMessage());
+            return null;
+        }
+    }
+
+    LinkedHashMap<WorldPoint, EnumMap<Skill, Integer>> retrieveXpDeltaMap(String username, boolean modifiedPoints) {
+        ResultSet results = retrieveXp(username);
+        LinkedHashMap<WorldPoint, EnumMap<Skill, Integer>> map = new LinkedHashMap<>();
+
+        try {
+            while (results.next()) {
+                int x = results.getInt("x_coord");
+                int y = results.getInt("y_coord");
+                int plane = results.getInt("plane");
+                WorldPoint point = modifiedPoints ? new WorldPoint(getModifiedX(x), getModifiedY(y), plane) : new WorldPoint(x, y, plane);
+                EnumMap<Skill, Integer> skillXpMap = new EnumMap<>(Skill.class);
+
+                SKILLS.get().collect(Collectors.toSet()).forEach(skillName -> {
+                    try {
+                        int xpValue = results.getInt(skillName);
+
+                        if (results.previous()) {
+                            xpValue -= results.getInt(skillName);
+                        }
+
+                        results.next();
+
+                        Skill skill = Skill.valueOf(skillName.toUpperCase());
+                        if (map.get(point) != null && map.get(point).get(skill) != null) {
+                            xpValue += map.get(point).get(skill);
+                        }
+
+                        skillXpMap.put(skill, xpValue);
+                    } catch (SQLException e) {
+                        e.printStackTrace();
+                    }
+                });
+
+                map.put(point, skillXpMap);
             }
 
             return map;
