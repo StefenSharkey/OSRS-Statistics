@@ -11,7 +11,8 @@ public interface StatisticsConfig extends Config {
     @ConfigItem(
             keyName = "databasetype",
             name = "Database Type",
-            description = "Type of the database server."
+            description = "Type of the database server.",
+            position = 0
     )
     default DatabaseType databaseType() {
         return DatabaseType.MARIADB;
@@ -20,7 +21,8 @@ public interface StatisticsConfig extends Config {
     @ConfigItem(
             keyName = "databaseserverip",
             name = "Database Server IP",
-            description = "IP(:port) of the database server."
+            description = "IP(:port) of the database server.",
+            position = 1
     )
     default String databaseServerIp() {
         return "67.246.243.177";
@@ -29,7 +31,8 @@ public interface StatisticsConfig extends Config {
     @ConfigItem(
             keyName = "databaseusername",
             name = "Database Username",
-            description = "Username for the the database server."
+            description = "Username for the the database server.",
+            position = 2
     )
     default String databaseUsername() {
         return "osrsstatistics";
@@ -39,7 +42,8 @@ public interface StatisticsConfig extends Config {
             keyName = "databasepassword",
             name = "Database Password",
             description = "Password for the the database server.",
-            secret = true
+            secret = true,
+            position = 3
     )
     default String databasePassword() {
         return "";
@@ -48,7 +52,8 @@ public interface StatisticsConfig extends Config {
     @ConfigItem(
             keyName = "databasename",
             name = "Database Name",
-            description = "Name of the database on the server."
+            description = "Name of the database on the server.",
+            position = 4
     )
     default String databaseName() {
         return "osrs_statistics";
@@ -57,7 +62,8 @@ public interface StatisticsConfig extends Config {
     @ConfigItem(
             keyName = "databasetableprefix",
             name = "Database Table Prefix",
-            description = "Prefix for the table in the database."
+            description = "Prefix for the table in the database.",
+            position = 5
     )
     default String databaseTablePrefix() {
         return "";
@@ -67,7 +73,8 @@ public interface StatisticsConfig extends Config {
             keyName = "heatmapdotsize",
             name = "Heat Map Dot Size",
             description = "How large the dots on the heat map should be.",
-            hidden = true
+            hidden = true,
+            position = 6
     )
     default int heatMapDotSize() {
         return 25;
@@ -75,8 +82,9 @@ public interface StatisticsConfig extends Config {
 
     @ConfigItem(
             keyName = "displayxptileoverlay",
-            name = "Display XP Tile Overlay",
-            description = "Display overlay over tiles XP was received on."
+            name = "Overlay Enabled",
+            description = "Display overlay over tiles XP was received on.",
+            position = 7
     )
     default boolean displayXpTileOverlay() {
         return true;
@@ -84,8 +92,9 @@ public interface StatisticsConfig extends Config {
 
     @ConfigItem(
             keyName = "displayxptotal",
-            name = "XP Total on Overlay",
-            description = "Display XP total per tile instead of number of times XP gained."
+            name = "Overlay XP Total",
+            description = "Display XP total per tile instead of number of times XP gained.",
+            position = 8
     )
     default boolean displayXpTotal() {
         return true;
