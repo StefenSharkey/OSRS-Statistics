@@ -99,4 +99,14 @@ public interface StatisticsConfig extends Config {
     default boolean displayXpTotal() {
         return true;
     }
+
+    @ConfigItem(
+            keyName = "displaytooltip",
+            name = "Tooltip Enabled",
+            description = "Display tooltip detailing XP gain per tile (Note: requires overlay enabled).",
+            position = 9
+    )
+    default boolean displayTooltip() {
+        return true;
+    }
 }

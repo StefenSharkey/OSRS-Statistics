@@ -24,7 +24,6 @@ import java.awt.Polygon;
 import java.util.Date;
 import java.util.EnumMap;
 import java.util.LinkedHashMap;
-import java.util.Map;
 
 @Slf4j
 public class StatisticsOverlay extends Overlay {
@@ -37,7 +36,7 @@ public class StatisticsOverlay extends Overlay {
     private final TooltipManager TOOLTIP_MANAGER;
     private final Database DATABASE;
 
-    private LinkedHashMap<WorldPoint, EnumMap<Skill, Integer>> xpDeltaMap;
+    private LinkedHashMap<WorldPoint, EnumMap<Skill, Integer[]>> xpDeltaMap;
     private LinkedHashMap<WorldPoint, EnumMap<Skill, Double>> xpTotalMap;
     private LinkedHashMap<WorldPoint, Double> xpCountMap;
     private Date lastUpdated;
@@ -69,7 +68,7 @@ public class StatisticsOverlay extends Overlay {
             }
 
             Tile selectedTile = CLIENT.getSelectedSceneTile();
-            if (selectedTile != null) {
+            if (CONFIG.displayTooltip() && selectedTile != null) {
                 WorldPoint worldPoint = selectedTile.getWorldLocation();
 
                 if (xpDeltaMap.containsKey(worldPoint)) {
@@ -79,15 +78,18 @@ public class StatisticsOverlay extends Overlay {
                             .append(", Plane: ").append(worldPoint.getPlane())
                             .append("</br>");
 
-                    for (Map.Entry<WorldPoint, EnumMap<Skill, Integer>> entry : xpDeltaMap.entrySet()) {
-                        log.info(entry.toString());
-
-                        if (WorldPointHelper.equals(entry.getKey(), worldPoint)) {
-                            for (Map.Entry<Skill, Integer> entry1 : entry.getValue().entrySet()) {
-                                tooltip.append(entry1.getKey().getName()).append(": ").append(entry1.getValue()).append("</br>");
-                            }
-                        }
-                    }
+                    xpDeltaMap
+                            .entrySet()
+                            .stream()
+                            .filter(entry -> WorldPointHelper.equals(entry.getKey(), worldPoint))
+                            .flatMap(entry -> entry.getValue().entrySet().stream())
+                            .forEach(entry1 -> tooltip
+                                    .append(entry1.getKey().getName())
+                                    .append(": ")
+                                    .append(entry1.getValue()[0])
+                                    .append("(")
+                                    .append(entry1.getValue()[1])
+                                    .append(")</br>"));
 
 //                    xpTotalMap
 //                            .entrySet()

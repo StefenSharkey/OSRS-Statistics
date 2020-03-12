@@ -16,6 +16,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 @Slf4j
@@ -116,17 +117,17 @@ public class Database {
         return retrieve("SELECT * FROM " + tableNameXp + " WHERE username = '" + username + "'");
     }
 
-    LinkedHashMap<WorldPoint, Double> retrieveXpCountMap(String username, boolean weighted, boolean modifiedPoints) {
+    LinkedHashMap<WorldPoint, Double> retrieveXpCountMap(String username, boolean normalized, boolean modifiedPoints) {
         ResultSet results = retrieveXp(username);
         LinkedHashMap<WorldPoint, Double> map = new LinkedHashMap<>();
         double[] max = {0.0F};
 
         try {
             while (results.next()) {
-                int x = results.getInt("x_coord");
-                int y = results.getInt("y_coord");
+                int xCoord = results.getInt("x_coord");
+                int yCoord = results.getInt("y_coord");
                 int plane = results.getInt("plane");
-                WorldPoint point = modifiedPoints ? new WorldPoint(getModifiedX(x), getModifiedY(y), plane) : new WorldPoint(x, y, plane);
+                WorldPoint point = modifiedPoints ? new WorldPoint(getModifiedX(xCoord), getModifiedY(yCoord), plane) : new WorldPoint(xCoord, yCoord, plane);
                 double sum = map.getOrDefault(point, 0.0) + 1.0;
 
                 if (sum > max[0]) {
@@ -136,7 +137,7 @@ public class Database {
                 map.put(point, sum);
             }
 
-            if (weighted && max[0] > 0) {
+            if (normalized && max[0] > 0) {
                 map.replaceAll((point, sum) -> sum / max[0]);
             }
 
@@ -147,17 +148,17 @@ public class Database {
         }
     }
 
-    LinkedHashMap<WorldPoint, EnumMap<Skill, Double>> retrieveXpTotalMap(String username, boolean weighted, boolean modifiedPoints) {
+    LinkedHashMap<WorldPoint, EnumMap<Skill, Double>> retrieveXpTotalMap(String username, boolean normalized, boolean modifiedPoints) {
         ResultSet results = retrieveXp(username);
         LinkedHashMap<WorldPoint, EnumMap<Skill, Double>> map = new LinkedHashMap<>();
         double[] max = {0};
 
         try {
             while (results.next()) {
-                int x = results.getInt("x_coord");
-                int y = results.getInt("y_coord");
+                int xCoord = results.getInt("x_coord");
+                int yCoord = results.getInt("y_coord");
                 int plane = results.getInt("plane");
-                WorldPoint point = modifiedPoints ? new WorldPoint(getModifiedX(x), getModifiedY(y), plane) : new WorldPoint(x, y, plane);
+                WorldPoint point = modifiedPoints ? new WorldPoint(getModifiedX(xCoord), getModifiedY(yCoord), plane) : new WorldPoint(xCoord, yCoord, plane);
                 EnumMap<Skill, Double> skillXpMap = new EnumMap<>(Skill.class);
 
                 SKILLS.get().collect(Collectors.toSet()).forEach(skillName -> {
@@ -177,7 +178,7 @@ public class Database {
                 map.put(point, skillXpMap);
             }
 
-            if (weighted && max[0] > 0) {
+            if (normalized && max[0] > 0) {
                 map.forEach((point, skillMap) -> skillMap.replaceAll((skill, value) -> value / max[0]));
             }
 
@@ -188,34 +189,44 @@ public class Database {
         }
     }
 
-    LinkedHashMap<WorldPoint, EnumMap<Skill, Integer>> retrieveXpDeltaMap(String username, boolean modifiedPoints) {
+    LinkedHashMap<WorldPoint, EnumMap<Skill, Integer[]>> retrieveXpDeltaMap(String username, boolean modifiedPoints) {
         ResultSet results = retrieveXp(username);
-        LinkedHashMap<WorldPoint, EnumMap<Skill, Integer>> map = new LinkedHashMap<>();
+        LinkedHashMap<WorldPoint, EnumMap<Skill, Integer[]>> map = new LinkedHashMap<>();
 
         try {
             while (results.next()) {
-                int x = results.getInt("x_coord");
-                int y = results.getInt("y_coord");
+                int xCoord = results.getInt("x_coord");
+                int yCoord = results.getInt("y_coord");
                 int plane = results.getInt("plane");
-                WorldPoint point = modifiedPoints ? new WorldPoint(getModifiedX(x), getModifiedY(y), plane) : new WorldPoint(x, y, plane);
-                EnumMap<Skill, Integer> skillXpMap = new EnumMap<>(Skill.class);
+                WorldPoint point = modifiedPoints ? new WorldPoint(getModifiedX(xCoord), getModifiedY(yCoord), plane) : new WorldPoint(xCoord, yCoord, plane);
+                EnumMap<Skill, Integer[]> skillXpMap = new EnumMap<>(Skill.class);
 
                 SKILLS.get().collect(Collectors.toSet()).forEach(skillName -> {
                     try {
-                        int xpValue = results.getInt(skillName);
+                        Skill skill = Skill.valueOf(skillName.toUpperCase());
+                        Integer[] xpValues = new Integer[2];
+                        // xpValues[0] is total XP gained on tile
+                        // xpValues[1] is number of times XP gained on tile
 
+                        xpValues[0] = results.getInt(skillName);
+
+                        // If a value already existed in the previous row, subtract it from the current value to get the
+                        // delta.
                         if (results.previous()) {
-                            xpValue -= results.getInt(skillName);
+                            xpValues[0] -= results.getInt(skillName);
                         }
 
                         results.next();
 
-                        Skill skill = Skill.valueOf(skillName.toUpperCase());
+                        // If XP was never obtained on that tile, then the count is zero; otherwise, note the delta.
+                        xpValues[1] = xpValues[0] > 0 ? 1 : 0;
+
+                        // If the point was already mapped and had a skill mapped to it, .
                         if (map.get(point) != null && map.get(point).get(skill) != null) {
-                            xpValue += map.get(point).get(skill);
+                            IntStream.range(0, map.get(point).get(skill).length).forEach(x -> xpValues[x] += map.get(point).get(skill)[x]);
                         }
 
-                        skillXpMap.put(skill, xpValue);
+                        skillXpMap.put(skill, xpValues);
                     } catch (SQLException e) {
                         e.printStackTrace();
                     }
