@@ -53,56 +53,42 @@ public class StatisticsPlugin extends Plugin {
     protected void startUp() {
         database = new Database(config);
         overlayManager.add(overlay);
-        log.info("Statistics started!");
     }
 
     @Override
     protected void shutDown() {
         overlayManager.remove(overlay);
-        log.info("Statistics stopped!");
     }
 
     @Subscribe
     public void onStatChanged(StatChanged statChanged) {
         Skill skill = statChanged.getSkill();
         int xp = statChanged.getXp();
-        log.info("onStatChanged() fired for {}", skill.getName());
 
         // We don't care about the overall skill or experience, as it can be calculated.
         if (skill != Skill.OVERALL) {
             // When a player logs in, this method is fired for each skill. We can use this to populate the cache.
             if (skillXpCache.size() < (Skill.values().length - 1)) {
-                log.info("XP starting up.");
                 skillXpCache.put(skill, xp);
-                log.info(skillXpCache.toString());
             } else {
                 // Occasionally, this method will be fired undesirably. To counteract this, only proceed if there is
                 // actually an XP change.
-                if (skillXpCache.get(skill) == xp) {
-                    log.warn("Cached XP is the same as current XP.");
-                } else {
-                    log.info("XP change: {oldXP={}, newXP={}}", skillXpCache.get(skill), xp);
-
+                if (skillXpCache.get(skill) != xp) {
                     skillXpCache.put(skill, xp);
                     Player player = client.getLocalPlayer();
 
                     // Sanity check for player nullability.
                     if (player != null) {
-                        log.info("Inserting into database.");
-
                         WorldPoint location = player.getWorldLocation();
+                        lastUpdated = new Date();
 
                         database.insertXp(player.getName(),
-                                new Timestamp(new Date().getTime()),
+                                new Timestamp(lastUpdated.getTime()),
                                 skillXpCache,
                                 location.getX(),
                                 location.getY(),
                                 location.getPlane(),
                                 client.getWorld());
-
-                        lastUpdated = new Date();
-                    } else {
-                        log.error("Player does not exist.");
                     }
                 }
             }
@@ -118,7 +104,6 @@ public class StatisticsPlugin extends Plugin {
            is because, when the user does certain actions such as loading into a new region, this method is fired for
            GameState.LOGGED_IN, without firing GameStatChanged event for all skills. */
         if (gameState == GameState.LOGGING_IN) {
-            log.info("Resetting XP cache.");
             clearXpCache();
         }
     }
@@ -161,8 +146,6 @@ public class StatisticsPlugin extends Plugin {
 
     @Subscribe
     public void onCommandExecuted(CommandExecuted commandExecuted) {
-        log.info(commandExecuted.getCommand());
-
         switch (commandExecuted.getCommand().toLowerCase()) {
             case "xpheat":
                 if (HeatMap.isGenerating) {
@@ -173,7 +156,6 @@ public class StatisticsPlugin extends Plugin {
                 } else {
                     new Thread(new HeatMap(client, config)).start();
                 }
-
                 break;
         }
     }

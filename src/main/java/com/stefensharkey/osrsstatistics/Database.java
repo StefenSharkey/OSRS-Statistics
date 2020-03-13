@@ -65,7 +65,7 @@ public class Database {
                                 "PRIMARY KEY (id))");
             }
         } catch (SQLException e) {
-            log.error(e.getLocalizedMessage());
+            log.error("SQL Error", e);
         }
     }
 
@@ -105,7 +105,7 @@ public class Database {
              PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
             preparedStatement.executeUpdate();
         } catch (SQLException e) {
-            log.error(e.getMessage());
+            log.error("SQL Error", e);
         }
     }
 
@@ -143,7 +143,7 @@ public class Database {
 
             return map;
         } catch (SQLException e) {
-            log.error(e.getMessage());
+            log.error("SQL Error", e);
             return null;
         }
     }
@@ -184,7 +184,7 @@ public class Database {
 
             return map;
         } catch (SQLException e) {
-            log.error(e.getMessage());
+            log.error("SQL Error", e);
             return null;
         }
     }
@@ -237,7 +237,7 @@ public class Database {
 
             return map;
         } catch (SQLException e) {
-            log.error(e.getMessage());
+            log.error("SQL Error", e);
             return null;
         }
     }
@@ -254,7 +254,7 @@ public class Database {
         try (Connection connection = DriverManager.getConnection(url)) {
             return connection.createStatement().executeQuery(sql);
         } catch (SQLException e) {
-            log.error(e.getMessage());
+            log.error("SQL Error", e);
         }
 
         return null;

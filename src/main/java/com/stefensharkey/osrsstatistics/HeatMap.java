@@ -64,7 +64,8 @@ public class HeatMap implements Runnable {
 
             CLIENT.addChatMessage(ChatMessageType.GAMEMESSAGE, "","Heat map generation finished.", null);
         } catch (IOException e) {
-            log.error(e.getMessage());
+            //noinspection HardcodedFileSeparator
+            log.error("Map file I/O failed.", e);
 
             CLIENT.addChatMessage(ChatMessageType.GAMEMESSAGE, "","Heat map generation failed.", null);
         } finally {
@@ -88,7 +89,7 @@ public class HeatMap implements Runnable {
                  FileOutputStream fileOutputStream = new FileOutputStream(file)) {
                 fileOutputStream.getChannel().transferFrom(readableByteChannel, 0, Long.MAX_VALUE);
             } catch (IOException e) {
-                log.error(e.getLocalizedMessage());
+                log.error("Could not download map file.", e);
             }
         }
 
