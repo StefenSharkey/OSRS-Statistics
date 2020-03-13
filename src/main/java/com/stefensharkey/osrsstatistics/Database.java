@@ -202,7 +202,7 @@ public class Database {
                 map.put(point, skillXpMap);
             }
 
-            if (normalized && max[0] > 0) {
+            if (normalized && max[0] > 0.0) {
                 map.forEach((point, skillMap) -> skillMap.replaceAll((skill, value) -> value / max[0]));
             }
 
