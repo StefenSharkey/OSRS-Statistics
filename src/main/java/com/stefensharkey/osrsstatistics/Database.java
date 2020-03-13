@@ -161,7 +161,7 @@ public class Database {
                 map.put(point, sum);
             }
 
-            if (normalized && max[0] > 0) {
+            if (normalized && max[0] > 0.0) {
                 map.replaceAll((point, sum) -> sum / max[0]);
             }
 
@@ -175,7 +175,7 @@ public class Database {
     LinkedHashMap<WorldPoint, EnumMap<Skill, Double>> retrieveXpTotalMap(String username, boolean normalized, boolean modifiedPoints) {
         ResultSet results = retrieveXp(username);
         LinkedHashMap<WorldPoint, EnumMap<Skill, Double>> map = new LinkedHashMap<>();
-        double[] max = {0};
+        double[] max = {0.0};
 
         try {
             while (results.next()) {
