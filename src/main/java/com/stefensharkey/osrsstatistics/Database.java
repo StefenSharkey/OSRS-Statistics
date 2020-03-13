@@ -120,7 +120,7 @@ public class Database {
     LinkedHashMap<WorldPoint, Double> retrieveXpCountMap(String username, boolean normalized, boolean modifiedPoints) {
         ResultSet results = retrieveXp(username);
         LinkedHashMap<WorldPoint, Double> map = new LinkedHashMap<>();
-        double[] max = {0.0F};
+        double[] max = {0.0};
 
         try {
             while (results.next()) {

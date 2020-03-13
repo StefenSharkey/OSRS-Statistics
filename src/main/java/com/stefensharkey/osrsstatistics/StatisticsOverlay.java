@@ -91,18 +91,7 @@ public class StatisticsOverlay extends Overlay {
                                     .append(entry1.getValue()[1])
                                     .append(")</br>"));
 
-//                    xpTotalMap
-//                            .entrySet()
-//                            .stream()
-//                            .filter(e -> WorldPointHelper.equals(e.getKey(), worldLocation))
-//                            .collect(Collectors.toSet())
-//                            .stream()
-//                            .map(Map.Entry::getValue)
-//                            .collect(Collectors.toList())
-
-                    tooltip.substring(0, tooltip.lastIndexOf("</br>"));
-
-                    TOOLTIP_MANAGER.add(new Tooltip(tooltip.toString()));
+                    TOOLTIP_MANAGER.add(new Tooltip(tooltip.substring(0, tooltip.lastIndexOf("</br>")).toString()));
                 }
             }
         }
@@ -162,20 +151,17 @@ public class StatisticsOverlay extends Overlay {
     }
 
     private Color getHeatMapColor (float value) {
-        int numColors = 3;
         float[][] colors = { { 0, 0, 1 }, { 0, 1, 0 }, { 1, 1, 0 }, { 1, 0, 0 } };
+        int numColors = colors.length - 1;
 
-        int index1;
-        int index2;
+        int index1 = 0;
+        int index2 = 0;
         float fractionBetween = 0;
 
-        if (value <= 0) {
-            index1 = 0;
-            index2 = 0;
-        } else if (value >= 1) {
+        if (value >= 1) {
             index1 = numColors;
             index2 = numColors;
-        } else {
+        } else if (value > 0) {
             value *= numColors;
             index1 = (int) Math.floor(value);
             index2 = index1 + 1;
