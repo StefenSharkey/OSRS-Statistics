@@ -66,8 +66,6 @@ public class StatisticsOverlay extends Overlay {
     private LinkedHashMap<WorldPoint, Double> xpCountMap;
     private Date lastUpdated;
 
-    private boolean displayXpTotal;
-
     @Inject
     StatisticsOverlay(Client client, StatisticsPlugin plugin, StatisticsConfig config, TooltipManager tooltipManager) {
         setPosition(OverlayPosition.DYNAMIC);
@@ -77,7 +75,6 @@ public class StatisticsOverlay extends Overlay {
         CONFIG = config;
         TOOLTIP_MANAGER = tooltipManager;
         DATABASE = new Database(config);
-        displayXpTotal = CONFIG.displayXpTotal();
         updateTiles();
     }
 
@@ -180,7 +177,6 @@ public class StatisticsOverlay extends Overlay {
 
     private void updateTiles() {
         Actor player = CLIENT.getLocalPlayer();
-        displayXpTotal = CONFIG.displayXpTotal();
 
         // If the player exists, and has received an XP update since the overlay last checked for one, repopulate the
         // local XP map and make note of it.
