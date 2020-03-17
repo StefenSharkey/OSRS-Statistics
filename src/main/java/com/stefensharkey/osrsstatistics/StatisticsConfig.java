@@ -133,4 +133,14 @@ public interface StatisticsConfig extends Config {
     default boolean displayTooltip() {
         return true;
     }
+
+    @ConfigItem(
+            keyName = "displaytooltipxptotal",
+            name = "XP Total on Tooltip",
+            description = "Change skill highlighting to XP total instead of number of times XP gained.",
+            position = 10
+    )
+    default boolean displayTooltipXpTotal() {
+        return true;
+    }
 }

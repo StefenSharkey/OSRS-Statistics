@@ -39,6 +39,7 @@ import net.runelite.client.ui.overlay.OverlayPosition;
 import net.runelite.client.ui.overlay.OverlayUtil;
 import net.runelite.client.ui.overlay.tooltip.Tooltip;
 import net.runelite.client.ui.overlay.tooltip.TooltipManager;
+import net.runelite.client.util.ColorUtil;
 
 import javax.inject.Inject;
 import java.awt.Color;
@@ -91,36 +92,54 @@ public class StatisticsOverlay extends Overlay {
                 renderTiles(graphics, player);
             }
 
-            Tile selectedTile = CLIENT.getSelectedSceneTile();
-            if (CONFIG.displayTooltip() && selectedTile != null) {
-                WorldPoint worldPoint = selectedTile.getWorldLocation();
-
-                if (xpDeltaMap.containsKey(worldPoint)) {
-                    StringBuilder tooltip = new StringBuilder()
-                            .append("X: ").append(worldPoint.getX())
-                            .append(", Y: ").append(worldPoint.getY())
-                            .append(", Plane: ").append(worldPoint.getPlane())
-                            .append("</br>");
-
-                    xpDeltaMap
-                            .entrySet()
-                            .stream()
-                            .filter(entry -> WorldPointHelper.equals(entry.getKey(), worldPoint))
-                            .flatMap(entry -> entry.getValue().entrySet().stream())
-                            .forEach(entry1 -> tooltip
-                                    .append(entry1.getKey().getName())
-                                    .append(": ")
-                                    .append(entry1.getValue()[0])
-                                    .append("(")
-                                    .append(entry1.getValue()[1])
-                                    .append(")</br>"));
-
-                    TOOLTIP_MANAGER.add(new Tooltip(tooltip.substring(0, tooltip.lastIndexOf("</br>")).toString()));
-                }
+            if (CONFIG.displayTooltip()) {
+                renderTooltip();
             }
         }
 
         return null;
+    }
+
+    private void renderTooltip() {
+        Tile selectedTile = CLIENT.getSelectedSceneTile();
+
+        if (selectedTile != null) {
+            WorldPoint worldPoint = selectedTile.getWorldLocation();
+
+            if (xpDeltaMap.containsKey(worldPoint)) {
+                StringBuilder tooltip = new StringBuilder()
+                        .append("X: ").append(worldPoint.getX())
+                        .append(", Y: ").append(worldPoint.getY())
+                        .append(", Plane: ").append(worldPoint.getPlane())
+                        .append("</br>");
+
+                xpDeltaMap.forEach((point, skillEnumMap) -> {
+                    if (WorldPointHelper.equals(point, worldPoint)) {
+                        int index = CONFIG.displayTooltipXpTotal() ? 0 : 1;
+
+                        int max = skillEnumMap
+                                .values()
+                                .stream()
+                                .map(integers -> integers[index])
+                                .mapToInt(entry1 -> entry1)
+                                .filter(entry1 -> entry1 >= 0)
+                                .max()
+                                .orElse(0);
+
+                        skillEnumMap.forEach((skill, values) -> tooltip
+                                .append(ColorUtil.colorTag(getHeatMapColor(values[index] / (float) max)))
+                                .append(skill.getName())
+                                .append(": ")
+                                .append(values[0])
+                                .append(" (")
+                                .append(values[1])
+                                .append(")</br>"));
+                    }
+                });
+
+                TOOLTIP_MANAGER.add(new Tooltip(tooltip.substring(0, tooltip.lastIndexOf("</br>")).toString()));
+            }
+        }
     }
 
     private void renderTiles(Graphics2D graphics, Actor player) {
