@@ -28,6 +28,14 @@ import net.runelite.api.coords.WorldPoint;
 
 public class WorldPointHelper {
 
+    /**
+     * Compares the two specified {@code WorldPoints}s for equality.
+     * Returns {@code true} if the two points represent the same point.
+     *
+     * @param point1 first world point to be compared for equality
+     * @param point2 second world point to be compared for equality
+     * @return {@code true} if the two specified points are equal
+     */
     public static boolean equals(WorldPoint point1, WorldPoint point2) {
         if (point1 != null && point2 != null) {
             return point1.getX() == point2.getX() &&
