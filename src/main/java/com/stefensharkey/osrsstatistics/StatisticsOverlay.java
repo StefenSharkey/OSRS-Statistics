@@ -149,9 +149,9 @@ public class StatisticsOverlay extends Overlay {
         if (polygon != null) {
             Double[] renderValue = {0.0};
 
-            if (CONFIG.displayXpTotal()) {
+            if (value instanceof EnumMap) {
                 ((EnumMap<Skill, Double>) value).forEach((skill, xpValue) -> renderValue[0] += xpValue);
-            } else {
+            } else if (value instanceof Double) {
                 renderValue[0] = (double) value;
             }
 
@@ -174,7 +174,7 @@ public class StatisticsOverlay extends Overlay {
         }
     }
 
-    private Color getHeatMapColor (float value) {
+    private Color getHeatMapColor(float value) {
         float[][] colors = { { 0, 0, 1 }, { 0, 1, 0 }, { 1, 1, 0 }, { 1, 0, 0 } };
         int numColors = colors.length - 1;
 
