@@ -161,12 +161,12 @@ public class StatisticsOverlay extends Overlay {
 
     private void updateTiles() {
         Actor player = CLIENT.getLocalPlayer();
+        displayXpTotal = CONFIG.displayXpTotal();
 
         // If the player exists, and has received an XP update since the overlay last checked for one, repopulate the
         // local XP map and make note of it.
-        if (player != null && (lastUpdated == null || lastUpdated.before(PLUGIN.lastUpdated) || displayXpTotal != CONFIG.displayXpTotal())) {
+        if (player != null && (lastUpdated == null || lastUpdated.before(PLUGIN.lastUpdated))) {
             lastUpdated = PLUGIN.lastUpdated;
-            displayXpTotal = CONFIG.displayXpTotal();
 
             xpDeltaMap = DATABASE.retrieveXpDeltaMap(player.getName(), false);
             xpTotalMap = DATABASE.retrieveXpTotalMap(player.getName(), true, false);
