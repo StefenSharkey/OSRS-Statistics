@@ -75,14 +75,14 @@ public class StatisticsOverlay extends Overlay {
         CONFIG = config;
         TOOLTIP_MANAGER = tooltipManager;
         DATABASE = new Database(config);
-        updateTiles();
+        updateMaps();
     }
 
     @Override
     public Dimension render(Graphics2D graphics) {
-        updateTiles();
-
         if (CONFIG.displayXpTileOverlay()) {
+            updateMaps();
+
             Player player = CLIENT.getLocalPlayer();
 
             if (player != null) {
@@ -175,7 +175,7 @@ public class StatisticsOverlay extends Overlay {
         }
     }
 
-    private void updateTiles() {
+    private void updateMaps() {
         Actor player = CLIENT.getLocalPlayer();
 
         // If the player exists, and has received an XP update since the overlay last checked for one, repopulate the
