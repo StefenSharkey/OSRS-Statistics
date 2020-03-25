@@ -38,8 +38,8 @@ public interface StatisticsConfig extends Config {
             description = "Type of the database server.",
             position = 0
     )
-    default DatabaseType databaseType() {
-        return DatabaseType.MARIADB;
+    default Database.DatabaseType databaseType() {
+        return Database.DatabaseType.MARIADB;
     }
 
     @ConfigItem(
