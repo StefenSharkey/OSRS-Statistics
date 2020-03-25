@@ -24,6 +24,7 @@
  */
 package com.stefensharkey.osrsstatistics;
 
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Skill;
 import net.runelite.api.coords.WorldPoint;
@@ -144,155 +145,139 @@ public class Database {
         return retrieve(String.format("SELECT * FROM %s WHERE username = '%s'", tableNameXp, username));
     }
 
+    @SneakyThrows
     LinkedHashMap<WorldPoint, HashMap<String, Integer>> retrieveKillMap(String username, boolean modifiedPoints) {
         ResultSet results = retrieveKill(username);
         LinkedHashMap<WorldPoint, HashMap<String, Integer>> outerMap = new LinkedHashMap<>();
 
-        try {
-            while (results.next()) {
-                int xCoord = results.getInt("x_coord");
-                int yCoord = results.getInt("y_coord");
-                int plane = results.getInt("plane");
-                WorldPoint point = modifiedPoints ? new WorldPoint(getModifiedX(xCoord), getModifiedY(yCoord), plane) : new WorldPoint(xCoord, yCoord, plane);
-                String npcName = results.getString("npc_name");
-                int count = ((outerMap.get(point) != null && outerMap.get(point).get(npcName) != null) ? outerMap.get(point).get(npcName) : 0) + 1;
-                HashMap<String, Integer> innerMap = new HashMap<>();
+        while (results.next()) {
+            int xCoord = results.getInt("x_coord");
+            int yCoord = results.getInt("y_coord");
+            int plane = results.getInt("plane");
+            WorldPoint point = modifiedPoints ? new WorldPoint(getModifiedX(xCoord), getModifiedY(yCoord), plane) : new WorldPoint(xCoord, yCoord, plane);
+            String npcName = results.getString("npc_name");
+            int count = ((outerMap.get(point) != null && outerMap.get(point).get(npcName) != null) ? outerMap.get(point).get(npcName) : 0) + 1;
+            HashMap<String, Integer> innerMap = new HashMap<>();
 
-                innerMap.put(npcName, count);
-                outerMap.put(point, innerMap);
-            }
-
-            return outerMap;
-        } catch (SQLException e) {
-            log.error(e.getMessage());
-            return null;
+            innerMap.put(npcName, count);
+            outerMap.put(point, innerMap);
         }
+
+        return outerMap;
     }
 
+    @SneakyThrows
     LinkedHashMap<WorldPoint, Double> retrieveXpCountMap(String username, boolean normalized, boolean modifiedPoints) {
         ResultSet results = retrieveXp(username);
         LinkedHashMap<WorldPoint, Double> map = new LinkedHashMap<>();
         double[] max = {0.0};
 
-        try {
-            while (results.next()) {
-                int xCoord = results.getInt("x_coord");
-                int yCoord = results.getInt("y_coord");
-                int plane = results.getInt("plane");
-                WorldPoint point = modifiedPoints ? new WorldPoint(getModifiedX(xCoord), getModifiedY(yCoord), plane) : new WorldPoint(xCoord, yCoord, plane);
-                double sum = map.getOrDefault(point, 0.0) + 1.0;
+        while (results.next()) {
+            int xCoord = results.getInt("x_coord");
+            int yCoord = results.getInt("y_coord");
+            int plane = results.getInt("plane");
+            WorldPoint point = modifiedPoints ? new WorldPoint(getModifiedX(xCoord), getModifiedY(yCoord), plane) : new WorldPoint(xCoord, yCoord, plane);
+            double sum = map.getOrDefault(point, 0.0) + 1.0;
 
-                if (sum > max[0]) {
-                    max[0] = sum;
-                }
-
-                map.put(point, sum);
+            if (sum > max[0]) {
+                max[0] = sum;
             }
 
-            if (normalized && max[0] > 0.0) {
-                map.replaceAll((point, sum) -> sum / max[0]);
-            }
-
-            return map;
-        } catch (SQLException e) {
-            log.error("SQL Error", e);
-            return null;
+            map.put(point, sum);
         }
+
+        if (normalized && max[0] > 0.0) {
+            map.replaceAll((point, sum) -> sum / max[0]);
+        }
+
+        return map;
     }
 
+    @SneakyThrows
     LinkedHashMap<WorldPoint, EnumMap<Skill, Double>> retrieveXpTotalMap(String username, boolean normalized, boolean modifiedPoints) {
         ResultSet results = retrieveXp(username);
         LinkedHashMap<WorldPoint, EnumMap<Skill, Double>> map = new LinkedHashMap<>();
         double[] max = {0.0};
 
-        try {
-            while (results.next()) {
-                int xCoord = results.getInt("x_coord");
-                int yCoord = results.getInt("y_coord");
-                int plane = results.getInt("plane");
-                WorldPoint point = modifiedPoints ? new WorldPoint(getModifiedX(xCoord), getModifiedY(yCoord), plane) : new WorldPoint(xCoord, yCoord, plane);
-                EnumMap<Skill, Double> skillXpMap = new EnumMap<>(Skill.class);
+        while (results.next()) {
+            int xCoord = results.getInt("x_coord");
+            int yCoord = results.getInt("y_coord");
+            int plane = results.getInt("plane");
+            WorldPoint point = modifiedPoints ? new WorldPoint(getModifiedX(xCoord), getModifiedY(yCoord), plane) : new WorldPoint(xCoord, yCoord, plane);
+            EnumMap<Skill, Double> skillXpMap = new EnumMap<>(Skill.class);
 
-                SKILLS.get().collect(Collectors.toSet()).forEach(skillName -> {
-                    try {
-                        double xpValue = results.getInt(skillName);
+            SKILLS.get().collect(Collectors.toSet()).forEach(skillName -> {
+                try {
+                    double xpValue = results.getInt(skillName);
 
-                        if (xpValue > max[0]) {
-                            max[0] = xpValue;
-                        }
-
-                        skillXpMap.put(Skill.valueOf(skillName.toUpperCase()), xpValue);
-                    } catch (SQLException e) {
-                        e.printStackTrace();
+                    if (xpValue > max[0]) {
+                        max[0] = xpValue;
                     }
-                });
 
-                map.put(point, skillXpMap);
-            }
+                    skillXpMap.put(Skill.valueOf(skillName.toUpperCase()), xpValue);
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                }
+            });
 
-            if (normalized && max[0] > 0.0) {
-                map.forEach((point, skillMap) -> skillMap.replaceAll((skill, value) -> value / max[0]));
-            }
-
-            return map;
-        } catch (SQLException e) {
-            log.error("SQL Error", e);
-            return null;
+            map.put(point, skillXpMap);
         }
+
+        if (normalized && max[0] > 0.0) {
+            map.forEach((point, skillMap) -> skillMap.replaceAll((skill, value) -> value / max[0]));
+        }
+
+        return map;
     }
 
+    @SneakyThrows
     LinkedHashMap<WorldPoint, EnumMap<Skill, Integer[]>> retrieveXpDeltaMap(String username, boolean modifiedPoints) {
         ResultSet results = retrieveXp(username);
         LinkedHashMap<WorldPoint, EnumMap<Skill, Integer[]>> map = new LinkedHashMap<>();
 
-        try {
-            while (results.next()) {
-                int xCoord = results.getInt("x_coord");
-                int yCoord = results.getInt("y_coord");
-                int plane = results.getInt("plane");
-                WorldPoint point = modifiedPoints ? new WorldPoint(getModifiedX(xCoord), getModifiedY(yCoord), plane) : new WorldPoint(xCoord, yCoord, plane);
-                EnumMap<Skill, Integer[]> skillXpMap = new EnumMap<>(Skill.class);
+        while (results.next()) {
+            int xCoord = results.getInt("x_coord");
+            int yCoord = results.getInt("y_coord");
+            int plane = results.getInt("plane");
+            WorldPoint point = modifiedPoints ? new WorldPoint(getModifiedX(xCoord), getModifiedY(yCoord), plane) : new WorldPoint(xCoord, yCoord, plane);
+            EnumMap<Skill, Integer[]> skillXpMap = new EnumMap<>(Skill.class);
 
-                SKILLS.get().collect(Collectors.toSet()).forEach(skillName -> {
-                    try {
-                        Skill skill = Skill.valueOf(skillName.toUpperCase());
+            SKILLS.get().collect(Collectors.toSet()).forEach(skillName -> {
+                try {
+                    Skill skill = Skill.valueOf(skillName.toUpperCase());
 
-                        // xpValues[0] is total XP gained on tile
-                        // xpValues[1] is number of times XP gained on tile
-                        Integer[] xpValues = new Integer[2];
+                    // xpValues[0] is total XP gained on tile
+                    // xpValues[1] is number of times XP gained on tile
+                    Integer[] xpValues = new Integer[2];
 
-                        xpValues[0] = results.getInt(skillName);
+                    xpValues[0] = results.getInt(skillName);
 
-                        // If a value already existed in the previous row, subtract it from the current value to get the
-                        // delta.
-                        if (results.previous()) {
-                            xpValues[0] -= results.getInt(skillName);
-                        }
-
-                        results.next();
-
-                        // If XP was never obtained on that tile, then the count is zero; otherwise, note the delta.
-                        xpValues[1] = xpValues[0] > 0 ? 1 : 0;
-
-                        // If the point was already mapped and had a skill mapped to it, .
-                        if (map.get(point) != null && map.get(point).get(skill) != null) {
-                            IntStream.range(0, map.get(point).get(skill).length).forEach(x -> xpValues[x] += map.get(point).get(skill)[x]);
-                        }
-
-                        skillXpMap.put(skill, xpValues);
-                    } catch (SQLException e) {
-                        e.printStackTrace();
+                    // If a value already existed in the previous row, subtract it from the current value to get the
+                    // delta.
+                    if (results.previous()) {
+                        xpValues[0] -= results.getInt(skillName);
                     }
-                });
 
-                map.put(point, skillXpMap);
-            }
+                    results.next();
 
-            return map;
-        } catch (SQLException e) {
-            log.error("SQL Error", e);
-            return null;
+                    // If XP was never obtained on that tile, then the count is zero; otherwise, note the delta.
+                    xpValues[1] = xpValues[0] > 0 ? 1 : 0;
+
+                    // If the point was already mapped and had a skill mapped to it, .
+                    if (map.get(point) != null && map.get(point).get(skill) != null) {
+                        IntStream.range(0, map.get(point).get(skill).length).forEach(x -> xpValues[x] += map.get(point).get(skill)[x]);
+                    }
+
+                    skillXpMap.put(skill, xpValues);
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                }
+            });
+
+            map.put(point, skillXpMap);
         }
+
+        return map;
     }
 
     private int getModifiedX (int x) {
