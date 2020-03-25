@@ -61,14 +61,14 @@ public class Database {
     private void createDatabase() {
         try (Connection connection = DriverManager.getConnection(url)) {
             if (connection != null) {
-                String skills = SKILLS.get().collect(Collectors.joining(" INT UNSIGNED NOT NULL, "));
+                String skills = SKILLS.get().collect(Collectors.joining(" INT UNSIGNED NOT NULL, ")) + " INT UNSIGNED NOT NULL, ";
 
                 connection.createStatement().execute(
                         "CREATE TABLE IF NOT EXISTS " + tableNameXp + " (" +
                                 "id INT NOT NULL AUTO_INCREMENT, " +
                                 "username VARCHAR(320) NOT NULL, " +
                                 "update_time DATETIME(3) NOT NULL, " +
-                                skills + " INT UNSIGNED NOT NULL, " +
+                                skills +
                                 "x_coord MEDIUMINT NOT NULL, " +
                                 "y_coord MEDIUMINT NOT NULL, " +
                                 "plane TINYINT NOT NULL, " +
