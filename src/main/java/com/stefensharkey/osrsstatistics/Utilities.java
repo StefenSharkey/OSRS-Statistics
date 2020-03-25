@@ -15,8 +15,6 @@ import java.util.Map;
 
 public class Utilities {
 
-    private static final int MAX_DISTANCE = 2350;
-
     public static Color getHeatMapColor(float value) {
         float[][] colors = { { 0, 0, 1 }, { 0, 1, 0 }, { 1, 1, 0 }, { 1, 0, 0 } };
         int numColors = colors.length - 1;
@@ -42,13 +40,14 @@ public class Utilities {
 
     public static void renderTiles(Client client, Graphics2D graphics, Actor player, LinkedHashMap<WorldPoint, ?> map) {
         LocalPoint localLocation = player.getLocalLocation();
+        int maxDistance = 2350;
 
         if (map != null) {
             map.forEach((point, value) -> {
                 LocalPoint tileLocation = LocalPoint.fromWorld(client, point.getX(), point.getY());
                 int plane = point.getPlane();
 
-                if (tileLocation != null && plane == client.getPlane() && localLocation.distanceTo(tileLocation) <= MAX_DISTANCE) {
+                if (tileLocation != null && plane == client.getPlane() && localLocation.distanceTo(tileLocation) <= maxDistance) {
                     Utilities.renderTile(client, graphics, tileLocation, value);
                 }
             });
