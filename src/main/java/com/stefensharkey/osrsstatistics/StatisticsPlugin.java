@@ -40,6 +40,7 @@ import net.runelite.api.events.StatChanged;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
+import net.runelite.client.events.NpcLootReceived;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.ui.overlay.OverlayManager;
@@ -65,23 +66,29 @@ public class StatisticsPlugin extends Plugin {
     private StatisticsConfig config;
 
     @Inject
-    private StatisticsOverlay overlay;
+    private StatisticsKillOverlay killOverlay;
+
+    @Inject
+    private StatisticsXpOverlay xpOverlay;
 
     private final LinkedHashMap<Skill, Integer> skillXpCache = new LinkedHashMap<>();
 
     private Database database;
 
-    Date lastUpdated = new Date();
+    Date lastUpdatedKill = new Date();
+    Date lastUpdatedXp = new Date();
 
     @Override
     protected void startUp() {
         database = new Database(config);
-        overlayManager.add(overlay);
+        overlayManager.add(killOverlay);
+        overlayManager.add(xpOverlay);
     }
 
     @Override
     protected void shutDown() {
-        overlayManager.remove(overlay);
+        overlayManager.remove(killOverlay);
+        overlayManager.remove(xpOverlay);
     }
 
     @Subscribe
@@ -104,15 +111,19 @@ public class StatisticsPlugin extends Plugin {
                     // Sanity check for player nullability.
                     if (player != null) {
                         WorldPoint location = player.getWorldLocation();
-                        lastUpdated = new Date();
+                        lastUpdatedXp = new Date();
 
-                        database.insertXp(player.getName(),
-                                new Timestamp(lastUpdated.getTime()),
+                        // Required for the thread; otherwise, the client may be reset.
+                        int world = client.getWorld();
+
+                        // Insert into the database within a thread so
+                        new Thread(() -> database.insertXp(player.getName(),
+                                new Timestamp(lastUpdatedKill.getTime()),
                                 skillXpCache,
                                 location.getX(),
                                 location.getY(),
                                 location.getPlane(),
-                                client.getWorld());
+                                world)).start();
                     }
                 }
             }
@@ -141,15 +152,23 @@ public class StatisticsPlugin extends Plugin {
 
             if (player != null) {
                 WorldPoint location = player.getWorldLocation();
+                lastUpdatedKill = new Date();
 
-                database.insertKill(player.getName(),
-                        new Timestamp(new Date().getTime()),
-                        npc.getName(),
-                        npc.getCombatLevel(),
+                // Required for the thread; otherwise, the insertion becomes invalid, as the NPC is reset.
+                String name = npc.getName();
+                int level = npc.getCombatLevel();
+                int world = client.getWorld();
+
+                log.info("npc={}", npc);
+
+                new Thread(() -> database.insertKill(player.getName(),
+                        new Timestamp(lastUpdatedKill.getTime()),
+                        name,
+                        level,
                         location.getX(),
                         location.getY(),
                         location.getPlane(),
-                        client.getWorld());
+                        world)).start();
             }
         }
     }

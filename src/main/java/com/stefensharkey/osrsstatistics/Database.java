@@ -36,6 +36,7 @@ import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.util.Arrays;
 import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.Supplier;
@@ -136,11 +137,36 @@ public class Database {
     }
 
     ResultSet retrieveKill(String username) {
-        return retrieve("SELECT * FROM " + tableNameKills + " WHERE username = '" + username + "'");
+        return retrieve(String.format("SELECT * FROM %s WHERE username = '%s'", tableNameKills, username));
     }
 
     ResultSet retrieveXp(String username) {
-        return retrieve("SELECT * FROM " + tableNameXp + " WHERE username = '" + username + "'");
+        return retrieve(String.format("SELECT * FROM %s WHERE username = '%s'", tableNameXp, username));
+    }
+
+    LinkedHashMap<WorldPoint, HashMap<String, Integer>> retrieveKillMap(String username, boolean modifiedPoints) {
+        ResultSet results = retrieveKill(username);
+        LinkedHashMap<WorldPoint, HashMap<String, Integer>> outerMap = new LinkedHashMap<>();
+
+        try {
+            while (results.next()) {
+                int xCoord = results.getInt("x_coord");
+                int yCoord = results.getInt("y_coord");
+                int plane = results.getInt("plane");
+                WorldPoint point = modifiedPoints ? new WorldPoint(getModifiedX(xCoord), getModifiedY(yCoord), plane) : new WorldPoint(xCoord, yCoord, plane);
+                String npcName = results.getString("npc_name");
+                int count = ((outerMap.get(point) != null && outerMap.get(point).get(npcName) != null) ? outerMap.get(point).get(npcName) : 0) + 1;
+                HashMap<String, Integer> innerMap = new HashMap<>();
+
+                innerMap.put(npcName, count);
+                outerMap.put(point, innerMap);
+            }
+
+            return outerMap;
+        } catch (SQLException e) {
+            log.error(e.getMessage());
+            return null;
+        }
     }
 
     LinkedHashMap<WorldPoint, Double> retrieveXpCountMap(String username, boolean normalized, boolean modifiedPoints) {

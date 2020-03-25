@@ -105,42 +105,72 @@ public interface StatisticsConfig extends Config {
     }
 
     @ConfigItem(
-            keyName = "displayxptileoverlay",
-            name = "Overlay Enabled",
+            keyName = "xpoverlayenabled",
+            name = "XP Overlay Enabled",
             description = "Display overlay over tiles XP was received on.",
             position = 7
     )
-    default boolean displayXpTileOverlay() {
-        return true;
+    default boolean xpOverlayEnabled() {
+        return false;
     }
 
     @ConfigItem(
-            keyName = "displayxptotal",
-            name = "Overlay XP Total",
+            keyName = "xpoverlayxptotal",
+            name = "XP Overlay - Show XP Total",
             description = "Display XP total per tile instead of number of times XP gained.",
             position = 8
     )
-    default boolean displayXpTotal() {
+    default boolean xpOverlayShowTotal() {
         return true;
     }
 
     @ConfigItem(
-            keyName = "displaytooltip",
-            name = "Tooltip Enabled",
+            keyName = "xptooltipenabled",
+            name = "XP Tooltip Enabled",
             description = "Display tooltip detailing XP gain per tile (Note: requires overlay enabled).",
             position = 9
     )
-    default boolean displayTooltip() {
+    default boolean xpTooltipEnabled() {
         return true;
     }
 
     @ConfigItem(
-            keyName = "displaytooltipxptotal",
-            name = "XP Total on Tooltip",
+            keyName = "xptooltipxptotal",
+            name = "XP Tooltip - Highlight XP Total",
             description = "Change skill highlighting to XP total instead of number of times XP gained.",
             position = 10
     )
-    default boolean displayTooltipXpTotal() {
+    default boolean xpTooltipHighlightTotal() {
+        return true;
+    }
+
+    @ConfigItem(
+            keyName = "killoverlayenabled",
+            name = "Kill Overlay Enabled",
+            description = "Display overlay over tiles where NPCs were killed.",
+            position = 11
+    )
+    default boolean killOverlayEnabled() {
+        return false;
+    }
+
+    @ConfigItem(
+            keyName = "killtooltipenabled",
+            name = "Kill Tooltip Enabled",
+            description = "Display tooltip detailing kills per tile (Note: requires overlay enabled).",
+            position = 12
+    )
+    default boolean killTooltipEnabled() {
+        return true;
+    }
+
+    @ConfigItem(
+            keyName = "npctooltipenabled",
+            name = "NPC Tooltip Enabled",
+            description = "Display tooltip whilst hovering over NPC detailing kill and loot history.",
+            position = 13
+    )
+    default boolean npcTooltipEnabled() {
         return true;
     }
 }
