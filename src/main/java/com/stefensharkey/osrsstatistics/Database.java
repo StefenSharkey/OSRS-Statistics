@@ -63,6 +63,7 @@ public class Database {
             if (connection != null) {
                 String skills = SKILLS.get().collect(Collectors.joining(" INT UNSIGNED NOT NULL, ")) + " INT UNSIGNED NOT NULL, ";
 
+                // XP Table
                 connection.createStatement().execute(
                         "CREATE TABLE IF NOT EXISTS " + tableNameXp + " (" +
                                 "id INT NOT NULL AUTO_INCREMENT, " +
@@ -75,6 +76,7 @@ public class Database {
                                 "world SMALLINT UNSIGNED NOT NULL, " +
                                 "PRIMARY KEY (id))");
 
+                // Kill Table
                 connection.createStatement().execute(
                         "CREATE TABLE IF NOT EXISTS " + tableNameKills + " (" +
                                 "id INT NOT NULL AUTO_INCREMENT, " +
@@ -228,9 +230,10 @@ public class Database {
                 SKILLS.get().collect(Collectors.toSet()).forEach(skillName -> {
                     try {
                         Skill skill = Skill.valueOf(skillName.toUpperCase());
-                        Integer[] xpValues = new Integer[2];
+
                         // xpValues[0] is total XP gained on tile
                         // xpValues[1] is number of times XP gained on tile
+                        Integer[] xpValues = new Integer[2];
 
                         xpValues[0] = results.getInt(skillName);
 
