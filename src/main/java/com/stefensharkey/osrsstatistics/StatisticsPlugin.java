@@ -41,6 +41,7 @@ import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.events.NpcLootReceived;
+import net.runelite.client.game.ItemManager;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.ui.overlay.OverlayManager;
@@ -63,10 +64,16 @@ public class StatisticsPlugin extends Plugin {
     private OverlayManager overlayManager;
 
     @Inject
+    private ItemManager itemManager;
+
+    @Inject
     private StatisticsConfig config;
 
     @Inject
     private StatisticsKillOverlay killOverlay;
+
+    @Inject
+    private StatisticsNpcOverlay npcOverlay;
 
     @Inject
     private StatisticsXpOverlay xpOverlay;
@@ -76,18 +83,21 @@ public class StatisticsPlugin extends Plugin {
     private Database database;
 
     Date lastUpdatedKill = new Date();
+    Date lastUpdatedLoot = new Date();
     Date lastUpdatedXp = new Date();
 
     @Override
     protected void startUp() {
         database = new Database(config);
         overlayManager.add(killOverlay);
+        overlayManager.add(npcOverlay);
         overlayManager.add(xpOverlay);
     }
 
     @Override
     protected void shutDown() {
         overlayManager.remove(killOverlay);
+        overlayManager.remove(npcOverlay);
         overlayManager.remove(xpOverlay);
     }
 
@@ -159,8 +169,6 @@ public class StatisticsPlugin extends Plugin {
                 int level = npc.getCombatLevel();
                 int world = client.getWorld();
 
-                log.info("npc={}", npc);
-
                 new Thread(() -> database.insertKill(player.getName(),
                         new Timestamp(lastUpdatedKill.getTime()),
                         name,
@@ -170,6 +178,19 @@ public class StatisticsPlugin extends Plugin {
                         location.getPlane(),
                         world)).start();
             }
+        }
+    }
+
+    @Subscribe
+    public void onNpcLootReceived(NpcLootReceived npcLootReceived) {
+        Player player = client.getLocalPlayer();
+
+        if (player != null) {
+            NPC npc = npcLootReceived.getNpc();
+            lastUpdatedLoot = new Date();
+
+            npcLootReceived.getItems().forEach(itemStack ->
+                    database.insertLoot(player.getName(), npc.getName(), npc.getCombatLevel(), itemStack.getId(), itemStack.getQuantity()));
         }
     }
 

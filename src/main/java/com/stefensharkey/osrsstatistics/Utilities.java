@@ -1,5 +1,6 @@
 package com.stefensharkey.osrsstatistics;
 
+import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Actor;
 import net.runelite.api.Client;
 import net.runelite.api.Perspective;
@@ -10,9 +11,9 @@ import net.runelite.client.ui.overlay.OverlayUtil;
 import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.Polygon;
-import java.util.LinkedHashMap;
 import java.util.Map;
 
+@Slf4j
 public class Utilities {
 
     public static Color getHeatMapColor(float value) {
@@ -38,7 +39,7 @@ public class Utilities {
                 (colors[index2][2] - colors[index1][2]) * fractionBetween + colors[index1][2]);
     }
 
-    public static void renderTiles(Client client, Graphics2D graphics, Actor player, LinkedHashMap<WorldPoint, ?> map) {
+    public static void renderTiles(Client client, Graphics2D graphics, Actor player, Map<WorldPoint, ?> map) {
         LocalPoint localLocation = player.getLocalLocation();
         int maxDistance = 2350;
 
@@ -48,7 +49,7 @@ public class Utilities {
                 int plane = point.getPlane();
 
                 if (tileLocation != null && plane == client.getPlane() && localLocation.distanceTo(tileLocation) <= maxDistance) {
-                    Utilities.renderTile(client, graphics, tileLocation, value);
+                    renderTile(client, graphics, tileLocation, value);
                 }
             });
         }

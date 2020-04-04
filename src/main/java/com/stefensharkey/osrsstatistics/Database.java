@@ -50,6 +50,7 @@ public class Database {
 
     private String url;
     private String tableNameKills;
+    private String tableNameLoot;
     private String tableNameXp;
 
     private final Supplier<Stream<String>> SKILLS = () -> Stream.of(Arrays.copyOf(Skill.values(), Skill.values().length - 1))
@@ -91,6 +92,16 @@ public class Database {
                                 "plane TINYINT NOT NULL, " +
                                 "world SMALLINT UNSIGNED NOT NULL, " +
                                 "PRIMARY KEY (id))");
+
+                // Loot Table
+                connection.createStatement().execute(
+                        "CREATE TABLE IF NOT EXISTS " + tableNameLoot + " (" +
+                                "username VARCHAR(320) NOT NULL, " +
+                                "npc_name VARCHAR(255) NOT NULL, " +
+                                "npc_level MEDIUMINT UNSIGNED NOT NULL, " +
+                                "item_id INT NOT NULL, " +
+                                "quantity INT UNSIGNED NOT NULL, " +
+                                "PRIMARY KEY (username, npc_name, npc_level, item_id))");
             }
         } catch (SQLException e) {
             log.error("SQL Error", e);
@@ -128,6 +139,18 @@ public class Database {
         insert(sql);
     }
 
+    @SneakyThrows
+    void insertLoot(String username, String npcName, int npcLevel, int itemId, int quantity) {
+        ResultSet resultSet = retrieve(String.format(
+                "SELECT * FROM %s WHERE username = '%s' AND npc_name = '%s' AND npc_level = %d AND item_id = %d",
+                tableNameLoot, username, npcName, npcLevel, itemId));
+
+        insert(resultSet.next()
+                ? String.format("UPDATE %s SET quantity = %d WHERE username = '%s' AND npc_name = '%s' AND npc_level = %d AND item_id = %d",
+                                tableNameLoot, quantity + resultSet.getInt("quantity"), username, npcName, npcLevel, itemId)
+                : String.format("INSERT INTO %s VALUES ('%s', '%s', %d, %d, %d)", tableNameLoot, username, npcName, npcLevel, itemId, quantity));
+    }
+
     private void insert(String sql) {
         try (Connection connection = DriverManager.getConnection(url);
              PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
@@ -139,6 +162,10 @@ public class Database {
 
     ResultSet retrieveKill(String username) {
         return retrieve(String.format("SELECT * FROM %s WHERE username = '%s'", tableNameKills, username));
+    }
+
+    ResultSet retrieveLoot(String username) {
+        return retrieve(String.format("SELECT * FROM %s WHERE username = '%s'", tableNameLoot, username));
     }
 
     ResultSet retrieveXp(String username) {
@@ -309,6 +336,7 @@ public class Database {
                 config.databasePassword());
 
         tableNameKills = config.databaseTablePrefix() + "kills";
+        tableNameLoot = config.databaseTablePrefix() + "loot";
         tableNameXp = config.databaseTablePrefix() + "experience";
 
         createDatabase();
