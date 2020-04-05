@@ -24,8 +24,10 @@
  */
 package com.stefensharkey.osrsstatistics;
 
+import lombok.experimental.UtilityClass;
 import net.runelite.api.coords.WorldPoint;
 
+@UtilityClass
 public class WorldPointHelper {
 
     /**
@@ -36,7 +38,7 @@ public class WorldPointHelper {
      * @param point2 second world point to be compared for equality
      * @return {@code true} if the two specified points are equal
      */
-    public static boolean equals(WorldPoint point1, WorldPoint point2) {
+    public boolean equals(WorldPoint point1, WorldPoint point2) {
         if (point1 != null && point2 != null) {
             return point1.getX() == point2.getX() &&
                     point1.getY() == point2.getY() &&

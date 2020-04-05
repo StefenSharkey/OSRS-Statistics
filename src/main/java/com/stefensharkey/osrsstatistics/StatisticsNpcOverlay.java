@@ -19,7 +19,7 @@ import java.awt.Polygon;
 import java.awt.Shape;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.Date;
+import java.time.LocalDateTime;
 
 @Slf4j
 public class StatisticsNpcOverlay extends Overlay {
@@ -32,7 +32,7 @@ public class StatisticsNpcOverlay extends Overlay {
     private final Database database;
 
     private ResultSet loot;
-    private Date lastUpdated;
+    private LocalDateTime lastUpdated;
 
     @Inject
     StatisticsNpcOverlay(Client client, StatisticsPlugin plugin, StatisticsConfig config, TooltipManager tooltipManager, ItemManager itemManager) {
@@ -49,20 +49,22 @@ public class StatisticsNpcOverlay extends Overlay {
 
     @Override
     public Dimension render(Graphics2D graphics) {
-        if (config.npcTooltipEnabled()) {
+        if (config.isNpcTooltipEnabled()) {
             if (client.isMenuOpen()) {
                 return null;
             }
 
             updateLoot();
 
-            Point mouseCanvasPoint = new Point(client.getMouseCanvasPosition().getX(), client.getMouseCanvasPosition().getY());
+            Point mouseCanvasPoint =
+                    new Point(client.getMouseCanvasPosition().getX(), client.getMouseCanvasPosition().getY());
 
             client.getNpcs().forEach(npc -> {
                 Polygon npcTilePoly = npc.getCanvasTilePoly();
                 Shape npcHull = npc.getConvexHull();
 
-                if ((npcHull != null && npcHull.contains(mouseCanvasPoint)) || (npcTilePoly != null && npcTilePoly.contains(mouseCanvasPoint))) {
+                if ((npcHull != null && npcHull.contains(mouseCanvasPoint))
+                        || (npcTilePoly != null && npcTilePoly.contains(mouseCanvasPoint))) {
                     renderTooltip(npc);
                 }
             });
@@ -84,7 +86,9 @@ public class StatisticsNpcOverlay extends Overlay {
                     int id = loot.getInt("item_id");
                     int quantity = loot.getInt("quantity");
 
-                    tooltip.append(itemManager.getItemComposition(id).getName()).append(" (").append(quantity).append(")</br>");
+                    tooltip.append(itemManager.getItemComposition(id).getName())
+                            .append(" (").append(quantity)
+                            .append(")</br>");
                 }
             }
 
@@ -103,7 +107,7 @@ public class StatisticsNpcOverlay extends Overlay {
 
         // If the player exists, and has received an XP update since the overlay last checked for one, repopulate the
         // local XP map and make note of it.
-        if (player != null && (lastUpdated == null || lastUpdated.before(plugin.lastUpdatedLoot))) {
+        if (player != null && (lastUpdated == null || lastUpdated.isBefore(plugin.lastUpdatedLoot))) {
             lastUpdated = plugin.lastUpdatedLoot;
 
             loot = database.retrieveLoot(player.getName());

@@ -26,15 +26,18 @@ package com.stefensharkey.osrsstatistics;
 
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import net.runelite.api.Actor;
 import net.runelite.api.Skill;
 import net.runelite.api.coords.WorldPoint;
+import org.mariadb.jdbc.MariaDbDataSource;
 
+import javax.sql.DataSource;
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.EnumMap;
 import java.util.HashMap;
@@ -48,12 +51,14 @@ import java.util.stream.Stream;
 @Slf4j
 public class Database {
 
-    private String url;
+    private DataSource dataSource;
+
     private String tableNameKills;
     private String tableNameLoot;
     private String tableNameXp;
 
-    private final Supplier<Stream<String>> SKILLS = () -> Stream.of(Arrays.copyOf(Skill.values(), Skill.values().length - 1))
+    private static final Supplier<Stream<String>> SKILLS = () ->
+            Stream.of(Arrays.copyOf(Skill.values(), Skill.values().length - 1))
             .map(Skill::getName)
             .map(String::toLowerCase);
 
@@ -62,97 +67,166 @@ public class Database {
     }
 
     private void createDatabase() {
-        try (Connection connection = DriverManager.getConnection(url)) {
+        try (Connection connection = dataSource.getConnection()) {
             if (connection != null) {
-                String skills = SKILLS.get().collect(Collectors.joining(" INT UNSIGNED NOT NULL, ")) + " INT UNSIGNED NOT NULL, ";
+                String skills = SKILLS.get()
+                        .collect(Collectors.joining(" INT UNSIGNED NOT NULL, ")) + " INT UNSIGNED NOT NULL, ";
 
                 // XP Table
-                connection.createStatement().execute(
-                        "CREATE TABLE IF NOT EXISTS " + tableNameXp + " (" +
-                                "id INT NOT NULL AUTO_INCREMENT, " +
-                                "username VARCHAR(320) NOT NULL, " +
-                                "update_time DATETIME(3) NOT NULL, " +
-                                skills +
-                                "x_coord MEDIUMINT NOT NULL, " +
-                                "y_coord MEDIUMINT NOT NULL, " +
-                                "plane TINYINT NOT NULL, " +
-                                "world SMALLINT UNSIGNED NOT NULL, " +
-                                "PRIMARY KEY (id))");
+                connection.createStatement().execute("CREATE TABLE IF NOT EXISTS " + tableNameXp +
+                        """
+                        (
+                            id INT NOT NULL AUTO_INCREMENT,
+                            username VARCHAR(320) NOT NULL,
+                            update_time DATETIME(3) NOT NULL,
+                            """ + skills + """
+                            x_coord MEDIUMINT NOT NULL,
+                            y_coord MEDIUMINT NOT NULL,
+                            plane TINYINT NOT NULL,
+                            world SMALLINT UNSIGNED NOT NULL,
+                            PRIMARY KEY (id)
+                        )
+                        """);
 
                 // Kill Table
-                connection.createStatement().execute(
-                        "CREATE TABLE IF NOT EXISTS " + tableNameKills + " (" +
-                                "id INT NOT NULL AUTO_INCREMENT, " +
-                                "username VARCHAR(320) NOT NULL, " +
-                                "update_time DATETIME(3) NOT NULL, " +
-                                "npc_name VARCHAR(255) NOT NULL, " +
-                                "npc_level MEDIUMINT UNSIGNED NOT NULL, " +
-                                "x_coord MEDIUMINT NOT NULL, " +
-                                "y_coord MEDIUMINT NOT NULL, " +
-                                "plane TINYINT NOT NULL, " +
-                                "world SMALLINT UNSIGNED NOT NULL, " +
-                                "PRIMARY KEY (id))");
+                connection.createStatement().execute("CREATE TABLE IF NOT EXISTS " + tableNameKills +
+                        """
+                        (
+                            id INT NOT NULL AUTO_INCREMENT,
+                            username VARCHAR(320) NOT NULL,
+                            update_time DATETIME(3) NOT NULL,
+                            npc_name VARCHAR(255) NOT NULL,
+                            npc_level MEDIUMINT UNSIGNED NOT NULL,
+                            x_coord MEDIUMINT NOT NULL,
+                            y_coord MEDIUMINT NOT NULL,
+                            plane TINYINT NOT NULL,
+                            world SMALLINT UNSIGNED NOT NULL,
+                            PRIMARY KEY (id)
+                        )
+                        """);
 
                 // Loot Table
                 connection.createStatement().execute(
-                        "CREATE TABLE IF NOT EXISTS " + tableNameLoot + " (" +
-                                "username VARCHAR(320) NOT NULL, " +
-                                "npc_name VARCHAR(255) NOT NULL, " +
-                                "npc_level MEDIUMINT UNSIGNED NOT NULL, " +
-                                "item_id INT NOT NULL, " +
-                                "quantity INT UNSIGNED NOT NULL, " +
-                                "PRIMARY KEY (username, npc_name, npc_level, item_id))");
+                        "CREATE TABLE IF NOT EXISTS " + tableNameLoot +
+                        """
+                        (
+                            username VARCHAR(320) NOT NULL,
+                            npc_name VARCHAR(255) NOT NULL,
+                            npc_level MEDIUMINT UNSIGNED NOT NULL,
+                            item_id INT NOT NULL,
+                            quantity INT UNSIGNED NOT NULL,
+                            PRIMARY KEY (username, npc_name, npc_level, item_id)
+                        )
+                        """);
             }
         } catch (SQLException e) {
             log.error("SQL Error", e);
         }
     }
 
-    void insertKill(String username, Timestamp dateTime, String npcName, int npcLevel, int xCoord, int yCoord, int plane, int world) {
-        String sql = "INSERT INTO " + tableNameKills +
-                " (username, update_time, npc_name, npc_level, x_coord, y_coord, plane, world) " +
-                "VALUES ('" + username + "', " +
-                "'" + dateTime + "', " +
-                "'" + npcName + "', " +
-                npcLevel + ", " +
-                xCoord + ", " +
-                yCoord + ", " +
-                plane + ", " +
-                world + ")";
 
-        insert(sql);
+    void insertKill(String username, LocalDateTime dateTime, Actor npc, WorldPoint location, int world) {
+        String sql =
+                "INSERT INTO " + tableNameKills +
+                " (username, update_time, npc_name, npc_level, x_coord, y_coord, plane, world) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+
+        try (Connection connection = dataSource.getConnection();
+             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+            int index = 0;
+            preparedStatement.setString(++index, username);
+            preparedStatement.setTimestamp(++index, Timestamp.valueOf(dateTime));
+            preparedStatement.setString(++index, npc.getName());
+            preparedStatement.setInt(++index, npc.getCombatLevel());
+            preparedStatement.setInt(++index, location.getX());
+            preparedStatement.setInt(++index, location.getY());
+            preparedStatement.setInt(++index, location.getPlane());
+            preparedStatement.setInt(++index, world);
+
+            preparedStatement.executeUpdate();
+        } catch (SQLException e) {
+            log.error("SQL Error", e);
+        }
     }
 
-    void insertXp(String username, Timestamp dateTime, Map<Skill, Integer> skills, int xCoord, int yCoord, int plane, int world) {
-        String sql = "INSERT INTO " + tableNameXp +
-                " (username, update_time, " +
-                SKILLS.get().collect(Collectors.joining(", ")) + ", " +
-                "x_coord, y_coord, plane, world) " +
-                "VALUES ('" + username + "', " +
-                "'" + dateTime + "', " +
-                skills.values().stream().map(String::valueOf).collect(Collectors.joining(", ")) + ", " +
-                xCoord + ", " +
-                yCoord + ", " +
-                plane + ", " +
-                world + ")";
+    void insertXp(String username, LocalDateTime dateTime, Map<Skill, Integer> skills, WorldPoint location, int world) {
+        String sql = "INSERT INTO " + tableNameXp + " (username, update_time, ?, x_coord, y_coord, plane, world) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?)";
 
-        insert(sql);
+        try (Connection connection = dataSource.getConnection();
+             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+            int index = 0;
+            preparedStatement.setString(++index, SKILLS.get().collect(Collectors.joining(", ")));
+            preparedStatement.setString(++index, username);
+            preparedStatement.setTimestamp(++index, Timestamp.valueOf(dateTime));
+            preparedStatement.setString(++index,
+                    skills.values().stream().map(String::valueOf).collect(Collectors.joining(", ")));
+            preparedStatement.setInt(++index, location.getX());
+            preparedStatement.setInt(++index, location.getY());
+            preparedStatement.setInt(++index, location.getPlane());
+            preparedStatement.setInt(++index, world);
+
+            preparedStatement.executeUpdate();
+        } catch (SQLException e) {
+            log.error("SQL Error", e);
+        }
     }
 
     @SneakyThrows
-    void insertLoot(String username, String npcName, int npcLevel, int itemId, int quantity) {
-        ResultSet resultSet = retrieve(String.format(
-                "SELECT * FROM %s WHERE username = '%s' AND npc_name = '%s' AND npc_level = %d AND item_id = %d",
-                tableNameLoot, username, npcName, npcLevel, itemId));
+    void insertLoot(String username, Actor npc, int itemId, int quantity) {
+        String npcName = npc.getName();
+        int npcLevel = npc.getCombatLevel();
+        ResultSet resultSet = null;
 
-        insert(resultSet.next()
-                ? String.format("UPDATE %s SET quantity = %d WHERE username = '%s' AND npc_name = '%s' AND npc_level = %d AND item_id = %d",
-                                tableNameLoot, quantity + resultSet.getInt("quantity"), username, npcName, npcLevel, itemId)
-                : String.format("INSERT INTO %s VALUES ('%s', '%s', %d, %d, %d)", tableNameLoot, username, npcName, npcLevel, itemId, quantity));
+        try (Connection connection = dataSource.getConnection()) {
+            try (PreparedStatement selectStatement = connection.prepareStatement(
+                    "SELECT * FROM ? WHERE username = ? AND npc_name = ? AND npc_level = ? AND item_id = ?")) {
+                int index = 0;
+
+                selectStatement.setString(++index, tableNameLoot);
+                selectStatement.setString(++index, username);
+                selectStatement.setString(++index, npcName);
+                selectStatement.setInt(++index, npcLevel);
+                selectStatement.setInt(++index, itemId);
+
+                resultSet = selectStatement.executeQuery();
+            }
+
+            boolean exists = resultSet.next();
+            try (PreparedStatement updateStatement = connection.prepareStatement(exists
+                    ? "UPDATE ? SET quantity = ? WHERE username = ? AND npc_name = ? AND npc_level = ? AND item_id = ?"
+                    : "INSERT INTO ? VALUES (?, ?, ?, ?, ?)")) {
+                int index = 0;
+
+                updateStatement.setString(++index, tableNameLoot);
+
+                if (exists) {
+                    updateStatement.setInt(++index, quantity + resultSet.getInt("quantity"));
+                    updateStatement.setString(++index, username);
+                    updateStatement.setString(++index, npcName);
+                    updateStatement.setInt(++index, npcLevel);
+                    updateStatement.setInt(++index, itemId);
+                } else {
+                    updateStatement.setString(++index, username);
+                    updateStatement.setString(++index, npcName);
+                    updateStatement.setInt(++index, npcLevel);
+                    updateStatement.setInt(++index, itemId);
+                    updateStatement.setInt(++index, quantity);
+                }
+
+                updateStatement.executeUpdate();
+            }
+        } catch (SQLException e) {
+            log.error("SQL Error", e);
+        } finally {
+            if (resultSet != null) {
+                resultSet.close();
+            }
+        }
     }
 
     private void insert(String sql) {
-        try (Connection connection = DriverManager.getConnection(url);
+        try (Connection connection = dataSource.getConnection();
              PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
             preparedStatement.executeUpdate();
         } catch (SQLException e) {
@@ -161,29 +235,50 @@ public class Database {
     }
 
     ResultSet retrieveKill(String username) {
-        return retrieve(String.format("SELECT * FROM %s WHERE username = '%s'", tableNameKills, username));
+        return retrieve(tableNameKills, username);
     }
 
     ResultSet retrieveLoot(String username) {
-        return retrieve(String.format("SELECT * FROM %s WHERE username = '%s'", tableNameLoot, username));
+        return retrieve(tableNameLoot, username);
     }
 
     ResultSet retrieveXp(String username) {
-        return retrieve(String.format("SELECT * FROM %s WHERE username = '%s'", tableNameXp, username));
+        return retrieve(tableNameXp, username);
+    }
+
+    private ResultSet retrieve(String tableName, String username) {
+        try (Connection connection = dataSource.getConnection();
+             PreparedStatement preparedStatement =
+                     connection.prepareStatement("SELECT * FROM ? WHERE username = ?")) {
+            int index = 0;
+
+            preparedStatement.setString(++index, tableName);
+            preparedStatement.setString(++index, username);
+
+            return preparedStatement.executeQuery();
+        } catch (SQLException e) {
+            log.error("SQL Error", e);
+        }
+
+        return null;
     }
 
     @SneakyThrows
-    LinkedHashMap<WorldPoint, HashMap<String, Integer>> retrieveKillMap(String username, boolean modifiedPoints) {
+    Map<WorldPoint, HashMap<String, Integer>> retrieveKillMap(String username, boolean modifiedPoints) {
         ResultSet results = retrieveKill(username);
-        LinkedHashMap<WorldPoint, HashMap<String, Integer>> outerMap = new LinkedHashMap<>();
+        Map<WorldPoint, HashMap<String, Integer>> outerMap = new LinkedHashMap<>();
 
         while (results.next()) {
             int xCoord = results.getInt("x_coord");
             int yCoord = results.getInt("y_coord");
             int plane = results.getInt("plane");
-            WorldPoint point = modifiedPoints ? new WorldPoint(getModifiedX(xCoord), getModifiedY(yCoord), plane) : new WorldPoint(xCoord, yCoord, plane);
+            WorldPoint point = modifiedPoints
+                    ? new WorldPoint(getModifiedX(xCoord), getModifiedY(yCoord), plane)
+                    : new WorldPoint(xCoord, yCoord, plane);
             String npcName = results.getString("npc_name");
-            int count = ((outerMap.get(point) != null && outerMap.get(point).get(npcName) != null) ? outerMap.get(point).get(npcName) : 0) + 1;
+            int count = ((outerMap.get(point) != null && outerMap.get(point).get(npcName) != null)
+                    ? outerMap.get(point).get(npcName)
+                    : 0) + 1;
             HashMap<String, Integer> innerMap = new HashMap<>();
 
             innerMap.put(npcName, count);
@@ -194,16 +289,18 @@ public class Database {
     }
 
     @SneakyThrows
-    LinkedHashMap<WorldPoint, Double> retrieveXpCountMap(String username, boolean normalized, boolean modifiedPoints) {
+    Map<WorldPoint, Double> retrieveXpCountMap(String username, boolean normalized, boolean modifiedPoints) {
         ResultSet results = retrieveXp(username);
-        LinkedHashMap<WorldPoint, Double> map = new LinkedHashMap<>();
+        Map<WorldPoint, Double> map = new LinkedHashMap<>();
         double[] max = {0.0};
 
         while (results.next()) {
             int xCoord = results.getInt("x_coord");
             int yCoord = results.getInt("y_coord");
             int plane = results.getInt("plane");
-            WorldPoint point = modifiedPoints ? new WorldPoint(getModifiedX(xCoord), getModifiedY(yCoord), plane) : new WorldPoint(xCoord, yCoord, plane);
+            WorldPoint point = modifiedPoints
+                    ? new WorldPoint(getModifiedX(xCoord), getModifiedY(yCoord), plane)
+                    : new WorldPoint(xCoord, yCoord, plane);
             double sum = map.getOrDefault(point, 0.0) + 1.0;
 
             if (sum > max[0]) {
@@ -221,16 +318,18 @@ public class Database {
     }
 
     @SneakyThrows
-    LinkedHashMap<WorldPoint, EnumMap<Skill, Double>> retrieveXpTotalMap(String username, boolean normalized, boolean modifiedPoints) {
+    Map<WorldPoint, EnumMap<Skill, Double>> retrieveXpTotalMap(String username, boolean normalized, boolean modifiedPoints) {
         ResultSet results = retrieveXp(username);
-        LinkedHashMap<WorldPoint, EnumMap<Skill, Double>> map = new LinkedHashMap<>();
+        Map<WorldPoint, EnumMap<Skill, Double>> map = new LinkedHashMap<>();
         double[] max = {0.0};
 
         while (results.next()) {
             int xCoord = results.getInt("x_coord");
             int yCoord = results.getInt("y_coord");
             int plane = results.getInt("plane");
-            WorldPoint point = modifiedPoints ? new WorldPoint(getModifiedX(xCoord), getModifiedY(yCoord), plane) : new WorldPoint(xCoord, yCoord, plane);
+            WorldPoint point = modifiedPoints
+                    ? new WorldPoint(getModifiedX(xCoord), getModifiedY(yCoord), plane)
+                    : new WorldPoint(xCoord, yCoord, plane);
             EnumMap<Skill, Double> skillXpMap = new EnumMap<>(Skill.class);
 
             SKILLS.get().collect(Collectors.toSet()).forEach(skillName -> {
@@ -258,15 +357,17 @@ public class Database {
     }
 
     @SneakyThrows
-    LinkedHashMap<WorldPoint, EnumMap<Skill, Integer[]>> retrieveXpDeltaMap(String username, boolean modifiedPoints) {
+    Map<WorldPoint, EnumMap<Skill, Integer[]>> retrieveXpDeltaMap(String username, boolean modifiedPoints) {
         ResultSet results = retrieveXp(username);
-        LinkedHashMap<WorldPoint, EnumMap<Skill, Integer[]>> map = new LinkedHashMap<>();
+        Map<WorldPoint, EnumMap<Skill, Integer[]>> map = new LinkedHashMap<>();
 
         while (results.next()) {
             int xCoord = results.getInt("x_coord");
             int yCoord = results.getInt("y_coord");
             int plane = results.getInt("plane");
-            WorldPoint point = modifiedPoints ? new WorldPoint(getModifiedX(xCoord), getModifiedY(yCoord), plane) : new WorldPoint(xCoord, yCoord, plane);
+            WorldPoint point = modifiedPoints
+                    ? new WorldPoint(getModifiedX(xCoord), getModifiedY(yCoord), plane)
+                    : new WorldPoint(xCoord, yCoord, plane);
             EnumMap<Skill, Integer[]> skillXpMap = new EnumMap<>(Skill.class);
 
             SKILLS.get().collect(Collectors.toSet()).forEach(skillName -> {
@@ -292,7 +393,9 @@ public class Database {
 
                     // If the point was already mapped and had a skill mapped to it, .
                     if (map.get(point) != null && map.get(point).get(skill) != null) {
-                        IntStream.range(0, map.get(point).get(skill).length).forEach(x -> xpValues[x] += map.get(point).get(skill)[x]);
+                        IntStream.range(0, map.get(point).get(skill).length).forEach(x ->
+                                xpValues[x] += map.get(point).get(skill)[x]
+                        );
                     }
 
                     skillXpMap.put(skill, xpValues);
@@ -315,25 +418,21 @@ public class Database {
         return (y - 1216) * 4;
     }
 
-    private ResultSet retrieve(String sql) {
-        try (Connection connection = DriverManager.getConnection(url)) {
-            return connection.createStatement().executeQuery(sql);
-        } catch (SQLException e) {
-            log.error("SQL Error", e);
-        }
-
-        return null;
-    }
-
 
     @SuppressWarnings("HardcodedFileSeparator")
     void updateConfig(StatisticsConfig config) {
-        url = String.format("jdbc:%s://%s/%s?user=%s&password=%s",
+        String url = String.format("jdbc:%s://%s/%s?user=%s&password=%s",
                 config.databaseType().getName(),
                 config.databaseServerIp(),
                 config.databaseName(),
                 config.databaseUsername(),
                 config.databasePassword());
+
+        if (config.databaseType() == DatabaseType.MYSQL) {
+            // TODO: Determine a DataSource object for MySQL.
+        } else if (config.databaseType() == DatabaseType.MARIADB) {
+            dataSource = new MariaDbDataSource(url);
+        }
 
         tableNameKills = config.databaseTablePrefix() + "kills";
         tableNameLoot = config.databaseTablePrefix() + "loot";

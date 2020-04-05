@@ -110,7 +110,7 @@ public interface StatisticsConfig extends Config {
             description = "Display overlay over tiles XP was received on.",
             position = 7
     )
-    default boolean xpOverlayEnabled() {
+    default boolean isXpOverlayEnabled() {
         return false;
     }
 
@@ -120,7 +120,7 @@ public interface StatisticsConfig extends Config {
             description = "Display XP total per tile instead of number of times XP gained.",
             position = 8
     )
-    default boolean xpOverlayShowTotal() {
+    default boolean shouldXpOverlayShowTotal() {
         return true;
     }
 
@@ -130,7 +130,7 @@ public interface StatisticsConfig extends Config {
             description = "Display tooltip detailing XP gain per tile (Note: requires overlay enabled).",
             position = 9
     )
-    default boolean xpTooltipEnabled() {
+    default boolean isXpTooltipEnabled() {
         return true;
     }
 
@@ -140,7 +140,7 @@ public interface StatisticsConfig extends Config {
             description = "Change skill highlighting to XP total instead of number of times XP gained.",
             position = 10
     )
-    default boolean xpTooltipHighlightTotal() {
+    default boolean shouldXpTooltipHighlightTotal() {
         return true;
     }
 
@@ -150,7 +150,7 @@ public interface StatisticsConfig extends Config {
             description = "Display overlay over tiles where NPCs were killed.",
             position = 11
     )
-    default boolean killOverlayEnabled() {
+    default boolean isKillOverlayEnabled() {
         return false;
     }
 
@@ -160,7 +160,7 @@ public interface StatisticsConfig extends Config {
             description = "Display tooltip detailing kills per tile (Note: requires overlay enabled).",
             position = 12
     )
-    default boolean killTooltipEnabled() {
+    default boolean isKillTooltipEnabled() {
         return true;
     }
 
@@ -170,7 +170,7 @@ public interface StatisticsConfig extends Config {
             description = "Display tooltip whilst hovering over NPC detailing kill and loot history.",
             position = 13
     )
-    default boolean npcTooltipEnabled() {
+    default boolean isNpcTooltipEnabled() {
         return true;
     }
 }

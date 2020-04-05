@@ -1,5 +1,6 @@
 package com.stefensharkey.osrsstatistics;
 
+import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Actor;
 import net.runelite.api.Client;
 import net.runelite.api.Player;
@@ -15,10 +16,11 @@ import net.runelite.client.util.ColorUtil;
 import javax.inject.Inject;
 import java.awt.Dimension;
 import java.awt.Graphics2D;
-import java.util.Date;
+import java.time.LocalDateTime;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
+import java.util.Map;
 
+@Slf4j
 public class StatisticsKillOverlay extends Overlay {
 
     private final Client client;
@@ -27,8 +29,8 @@ public class StatisticsKillOverlay extends Overlay {
     private final TooltipManager tooltipManager;
     private final Database database;
 
-    private LinkedHashMap<WorldPoint, HashMap<String, Integer>> killCountMap;
-    private Date lastUpdated;
+    private Map<WorldPoint, HashMap<String, Integer>> killCountMap;
+    private LocalDateTime lastUpdated;
 
     @Inject
     StatisticsKillOverlay(Client client, StatisticsPlugin plugin, StatisticsConfig config, TooltipManager tooltipManager) {
@@ -44,7 +46,7 @@ public class StatisticsKillOverlay extends Overlay {
 
     @Override
     public Dimension render(Graphics2D graphics) {
-        if (config.killOverlayEnabled()) {
+        if (config.isKillOverlayEnabled()) {
             updateMaps();
 
             Player player = client.getLocalPlayer();
@@ -53,7 +55,7 @@ public class StatisticsKillOverlay extends Overlay {
                 Utilities.renderTiles(client, graphics, player, killCountMap);
             }
 
-            if (config.killTooltipEnabled()) {
+            if (config.isKillTooltipEnabled()) {
                 renderTooltip();
             }
         }
@@ -104,7 +106,7 @@ public class StatisticsKillOverlay extends Overlay {
 
         // If the player exists, and has received an XP update since the overlay last checked for one, repopulate the
         // local XP map and make note of it.
-        if (player != null && (lastUpdated == null || lastUpdated.before(plugin.lastUpdatedKill))) {
+        if (player != null && (lastUpdated == null || lastUpdated.isBefore(plugin.lastUpdatedKill))) {
             lastUpdated = plugin.lastUpdatedKill;
             killCountMap = database.retrieveKillMap(client.getUsername(), false);
         }

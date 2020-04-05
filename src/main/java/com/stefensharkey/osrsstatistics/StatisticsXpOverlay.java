@@ -41,9 +41,9 @@ import net.runelite.client.util.ColorUtil;
 import javax.inject.Inject;
 import java.awt.Dimension;
 import java.awt.Graphics2D;
-import java.util.Date;
+import java.time.LocalDateTime;
 import java.util.EnumMap;
-import java.util.LinkedHashMap;
+import java.util.Map;
 
 @Slf4j
 public class StatisticsXpOverlay extends Overlay {
@@ -54,10 +54,10 @@ public class StatisticsXpOverlay extends Overlay {
     private final TooltipManager tooltipManager;
     private final Database database;
 
-    private LinkedHashMap<WorldPoint, EnumMap<Skill, Integer[]>> xpDeltaMap;
-    private LinkedHashMap<WorldPoint, EnumMap<Skill, Double>> xpTotalMap;
-    private LinkedHashMap<WorldPoint, Double> xpCountMap;
-    private Date lastUpdated;
+    private Map<WorldPoint, EnumMap<Skill, Integer[]>> xpDeltaMap;
+    private Map<WorldPoint, EnumMap<Skill, Double>> xpTotalMap;
+    private Map<WorldPoint, Double> xpCountMap;
+    private LocalDateTime lastUpdated;
 
     @Inject
     StatisticsXpOverlay(Client client, StatisticsPlugin plugin, StatisticsConfig config, TooltipManager tooltipManager) {
@@ -73,16 +73,16 @@ public class StatisticsXpOverlay extends Overlay {
 
     @Override
     public Dimension render(Graphics2D graphics) {
-        if (config.xpOverlayEnabled()) {
+        if (config.isXpOverlayEnabled()) {
             updateMaps();
 
             Player player = client.getLocalPlayer();
 
             if (player != null) {
-                Utilities.renderTiles(client, graphics, player, config.xpOverlayShowTotal() ? xpTotalMap : xpCountMap);
+                Utilities.renderTiles(client, graphics, player, config.shouldXpOverlayShowTotal() ? xpTotalMap : xpCountMap);
             }
 
-            if (config.xpTooltipEnabled()) {
+            if (config.isXpTooltipEnabled()) {
                 renderTooltip();
             }
         }
@@ -105,7 +105,7 @@ public class StatisticsXpOverlay extends Overlay {
 
                 xpDeltaMap.forEach((point, skillEnumMap) -> {
                     if (WorldPointHelper.equals(point, worldPoint)) {
-                        int index = config.xpTooltipHighlightTotal() ? 0 : 1;
+                        int index = config.shouldXpTooltipHighlightTotal() ? 0 : 1;
 
                         int max = skillEnumMap
                                 .values()
@@ -141,7 +141,7 @@ public class StatisticsXpOverlay extends Overlay {
 
         // If the player exists, and has received an XP update since the overlay last checked for one, repopulate the
         // local XP map and make note of it.
-        if (player != null && (lastUpdated == null || lastUpdated.before(plugin.lastUpdatedXp))) {
+        if (player != null && (lastUpdated == null || lastUpdated.isBefore(plugin.lastUpdatedXp))) {
             lastUpdated = plugin.lastUpdatedXp;
 
             xpDeltaMap = database.retrieveXpDeltaMap(player.getName(), false);

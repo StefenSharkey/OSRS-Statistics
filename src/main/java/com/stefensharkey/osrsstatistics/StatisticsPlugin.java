@@ -47,8 +47,7 @@ import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.ui.overlay.OverlayManager;
 
 import javax.inject.Inject;
-import java.sql.Timestamp;
-import java.util.Date;
+import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 
 @Slf4j
@@ -82,9 +81,9 @@ public class StatisticsPlugin extends Plugin {
 
     private Database database;
 
-    Date lastUpdatedKill = new Date();
-    Date lastUpdatedLoot = new Date();
-    Date lastUpdatedXp = new Date();
+    LocalDateTime lastUpdatedKill = Utilities.now();
+    LocalDateTime lastUpdatedLoot = Utilities.now();
+    LocalDateTime lastUpdatedXp = Utilities.now();
 
     @Override
     protected void startUp() {
@@ -121,19 +120,15 @@ public class StatisticsPlugin extends Plugin {
                     // Sanity check for player nullability.
                     if (player != null) {
                         WorldPoint location = player.getWorldLocation();
-                        lastUpdatedXp = new Date();
+                        lastUpdatedXp = Utilities.now();
 
                         // Required for the thread; otherwise, the client may be reset.
                         int world = client.getWorld();
 
                         // Insert into the database within a thread so
-                        new Thread(() -> database.insertXp(player.getName(),
-                                new Timestamp(lastUpdatedKill.getTime()),
-                                skillXpCache,
-                                location.getX(),
-                                location.getY(),
-                                location.getPlane(),
-                                world)).start();
+                        new Thread(() ->
+                                database.insertXp(player.getName(), lastUpdatedKill, skillXpCache, location, world)
+                        ).start();
                     }
                 }
             }
@@ -149,7 +144,7 @@ public class StatisticsPlugin extends Plugin {
            is because, when the user does certain actions such as loading into a new region, this method is fired for
            GameState.LOGGED_IN, without firing GameStatChanged event for all skills. */
         if (gameState == GameState.LOGGING_IN) {
-            clearXpCache();
+            skillXpCache.clear();
         }
     }
 
@@ -162,21 +157,14 @@ public class StatisticsPlugin extends Plugin {
 
             if (player != null) {
                 WorldPoint location = player.getWorldLocation();
-                lastUpdatedKill = new Date();
+                lastUpdatedKill = Utilities.now();
 
                 // Required for the thread; otherwise, the insertion becomes invalid, as the NPC is reset.
-                String name = npc.getName();
-                int level = npc.getCombatLevel();
                 int world = client.getWorld();
 
-                new Thread(() -> database.insertKill(player.getName(),
-                        new Timestamp(lastUpdatedKill.getTime()),
-                        name,
-                        level,
-                        location.getX(),
-                        location.getY(),
-                        location.getPlane(),
-                        world)).start();
+                new Thread(() ->
+                        database.insertKill(player.getName(), lastUpdatedKill, npc, location, world)
+                ).start();
             }
         }
     }
@@ -187,10 +175,11 @@ public class StatisticsPlugin extends Plugin {
 
         if (player != null) {
             NPC npc = npcLootReceived.getNpc();
-            lastUpdatedLoot = new Date();
+            lastUpdatedLoot = Utilities.now();
 
             npcLootReceived.getItems().forEach(itemStack ->
-                    database.insertLoot(player.getName(), npc.getName(), npc.getCombatLevel(), itemStack.getId(), itemStack.getQuantity()));
+                    database.insertLoot(player.getName(), npc, itemStack.getId(), itemStack.getQuantity())
+            );
         }
     }
 
@@ -212,7 +201,7 @@ public class StatisticsPlugin extends Plugin {
     public void onCommandExecuted(CommandExecuted commandExecuted) {
         switch (commandExecuted.getCommand().toLowerCase()) {
             case "xpheat":
-                if (HeatMap.isGenerating) {
+                if (HeatMap.IS_GENERATING) {
                     client.addChatMessage(ChatMessageType.GAMEMESSAGE,
                             "",
                             "A heat map is aleady generating. Please wait for it to complete.",
@@ -227,9 +216,5 @@ public class StatisticsPlugin extends Plugin {
     @Provides
     StatisticsConfig provideConfig(ConfigManager configManager) {
         return configManager.getConfig(StatisticsConfig.class);
-    }
-
-    private void clearXpCache() {
-        skillXpCache.clear();
     }
 }
