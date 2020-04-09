@@ -104,8 +104,8 @@ public class StatisticsKillOverlay extends Overlay {
     private void updateMaps() {
         Actor player = client.getLocalPlayer();
 
-        // If the player exists, and has received an XP update since the overlay last checked for one, repopulate the
-        // local XP map and make note of it.
+        // If the player exists, and has received a kill update since the overlay last checked for one, repopulate the
+        // local kill map and make note of it.
         if (player != null && (lastUpdated == null || lastUpdated.isBefore(plugin.lastUpdatedKill))) {
             lastUpdated = plugin.lastUpdatedKill;
             killCountMap = database.retrieveKillMap(client.getUsername(), false);
