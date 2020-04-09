@@ -204,7 +204,7 @@ public class StatisticsPlugin extends Plugin {
                 if (HeatMap.IS_GENERATING) {
                     client.addChatMessage(ChatMessageType.GAMEMESSAGE,
                             "",
-                            "A heat map is aleady generating. Please wait for it to complete.",
+                            "A heat map is already generating. Please wait for it to complete.",
                             null);
                 } else {
                     new Thread(new HeatMap(client, config)).start();
