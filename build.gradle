@@ -34,7 +34,7 @@ repositories {
     mavenCentral()
 }
 
-def runeLiteVersion = '1.6.9'
+def runeLiteVersion = '1.6.10'
 
 dependencies {
     compileOnly group: 'net.runelite', name:'client', version: runeLiteVersion
@@ -47,7 +47,7 @@ dependencies {
 
     testImplementation group: 'junit', name: 'junit', version: '4.13'
     testImplementation group: 'org.slf4j', name: 'slf4j-simple', version: '2.0.0-alpha1'
-    testImplementation group: 'net.runelite', name:'client', version: runeLiteVersion, {
+    testImplementation group: 'net.runelite', name: 'client', version: runeLiteVersion, {
         exclude group: 'ch.qos.logback', module: 'logback-classic'
     }
 }
