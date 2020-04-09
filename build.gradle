@@ -54,7 +54,7 @@ dependencies {
 
 group = 'com.stefensharkey.osrsstatistics'
 version = '1.0-SNAPSHOT'
-sourceCompatibility = '13'
+sourceCompatibility = '14'
 
 tasks.withType(JavaCompile) {
     options.encoding = 'UTF-8'

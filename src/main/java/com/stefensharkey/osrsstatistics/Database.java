@@ -66,62 +66,56 @@ public class Database {
         updateConfig(config);
     }
 
-    private void createDatabase() {
-        try (Connection connection = dataSource.getConnection()) {
-            if (connection != null) {
-                String skills = SKILLS.get()
-                        .collect(Collectors.joining(" INT UNSIGNED NOT NULL, ")) + " INT UNSIGNED NOT NULL, ";
+    @SneakyThrows
+    private synchronized void createDatabase() {
+        String skills = SKILLS.get()
+                .collect(Collectors.joining(" INT UNSIGNED NOT NULL, ")) + " INT UNSIGNED NOT NULL, ";
 
-                // XP Table
-                connection.createStatement().execute("CREATE TABLE IF NOT EXISTS " + tableNameXp +
-                        """
-                        (
-                            id INT NOT NULL AUTO_INCREMENT,
-                            username VARCHAR(320) NOT NULL,
-                            update_time DATETIME(3) NOT NULL,
-                            """ + skills + """
-                            x_coord MEDIUMINT NOT NULL,
-                            y_coord MEDIUMINT NOT NULL,
-                            plane TINYINT NOT NULL,
-                            world SMALLINT UNSIGNED NOT NULL,
-                            PRIMARY KEY (id)
-                        )
-                        """);
+        // XP Table
+        connection.createStatement().execute("CREATE TABLE IF NOT EXISTS " + tableNameXp +
+                                             """
+                                             (
+                                                 id INT NOT NULL AUTO_INCREMENT,
+                                                 username VARCHAR(320) NOT NULL,
+                                                 update_time DATETIME(3) NOT NULL,
+                                             """ + skills + """
+                                                 x_coord MEDIUMINT NOT NULL,
+                                                 y_coord MEDIUMINT NOT NULL,
+                                                 plane TINYINT NOT NULL,
+                                                 world SMALLINT UNSIGNED NOT NULL,
+                                                 PRIMARY KEY (id)
+                                             )
+                                             """);
 
-                // Kill Table
-                connection.createStatement().execute("CREATE TABLE IF NOT EXISTS " + tableNameKills +
-                        """
-                        (
-                            id INT NOT NULL AUTO_INCREMENT,
-                            username VARCHAR(320) NOT NULL,
-                            update_time DATETIME(3) NOT NULL,
-                            npc_name VARCHAR(255) NOT NULL,
-                            npc_level MEDIUMINT UNSIGNED NOT NULL,
-                            x_coord MEDIUMINT NOT NULL,
-                            y_coord MEDIUMINT NOT NULL,
-                            plane TINYINT NOT NULL,
-                            world SMALLINT UNSIGNED NOT NULL,
-                            PRIMARY KEY (id)
-                        )
-                        """);
+        // Kill Table
+        connection.createStatement().execute("CREATE TABLE IF NOT EXISTS " + tableNameKills +
+                                             """
+                                             (
+                                                 id INT NOT NULL AUTO_INCREMENT,
+                                                 username VARCHAR(320) NOT NULL,
+                                                 update_time DATETIME(3) NOT NULL,
+                                                 npc_name VARCHAR(255) NOT NULL,
+                                                 npc_level MEDIUMINT UNSIGNED NOT NULL,
+                                                 x_coord MEDIUMINT NOT NULL,
+                                                 y_coord MEDIUMINT NOT NULL,
+                                                 plane TINYINT NOT NULL,
+                                                 world SMALLINT UNSIGNED NOT NULL,
+                                                 PRIMARY KEY (id)
+                                             )
+                                             """);
 
-                // Loot Table
-                connection.createStatement().execute(
-                        "CREATE TABLE IF NOT EXISTS " + tableNameLoot +
-                        """
-                        (
-                            username VARCHAR(320) NOT NULL,
-                            npc_name VARCHAR(255) NOT NULL,
-                            npc_level MEDIUMINT UNSIGNED NOT NULL,
-                            item_id INT NOT NULL,
-                            quantity INT UNSIGNED NOT NULL,
-                            PRIMARY KEY (username, npc_name, npc_level, item_id)
-                        )
-                        """);
-            }
-        } catch (SQLException e) {
-            log.error("SQL Error", e);
-        }
+        // Loot Table
+        connection.createStatement().execute("CREATE TABLE IF NOT EXISTS " + tableNameLoot +
+                                             """
+                                             (
+                                                 username VARCHAR(320) NOT NULL,
+                                                 npc_name VARCHAR(255) NOT NULL,
+                                                 npc_level MEDIUMINT UNSIGNED NOT NULL,
+                                                 item_id INT NOT NULL,
+                                                 quantity INT UNSIGNED NOT NULL,
+                                                 PRIMARY KEY (username, npc_name, npc_level, item_id)
+                                             )
+                                             """);
     }
 
 
