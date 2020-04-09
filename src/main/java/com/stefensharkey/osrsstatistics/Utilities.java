@@ -65,10 +65,10 @@ public class Utilities {
         if (polygon != null) {
             Double[] renderValue = {0.0};
 
-            if (tileValue instanceof Map) {
-                ((Map) tileValue).forEach((key, value) -> renderValue[0] += (double) value);
-            } else if (tileValue instanceof Double) {
-                renderValue[0] = (double) tileValue;
+            if (tileValue instanceof Map map) {
+                map.forEach((key, value) -> renderValue[0] += (double) value);
+            } else if (tileValue instanceof Double num) {
+                renderValue[0] = num;
             }
 
             OverlayUtil.renderPolygon(graphics, polygon, getHeatMapColor(renderValue[0].floatValue()));
