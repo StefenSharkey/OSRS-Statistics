@@ -65,8 +65,8 @@ public class Database {
 
     private static final Supplier<Stream<String>> SKILLS = () ->
             Stream.of(Arrays.copyOf(Skill.values(), Skill.values().length - 1))
-            .map(Skill::getName)
-            .map(String::toLowerCase);
+                    .map(Skill::getName)
+                    .map(String::toLowerCase);
 
     Database(StatisticsConfig config) {
         updateConfig(config);
@@ -233,7 +233,7 @@ public class Database {
         return retrieve(tableNameXp, username);
     }
 
-    synchronized private ResultSet retrieve(String tableName, String username) {
+    private synchronized ResultSet retrieve(String tableName, String username) {
         try (PreparedStatement preparedStatement =
                      connection.prepareStatement("SELECT * FROM " + tableName + " WHERE username = ?")) {
             preparedStatement.setString(1, username);
@@ -258,9 +258,9 @@ public class Database {
                     ? new WorldPoint(getModifiedX(xCoord), getModifiedY(yCoord), plane)
                     : new WorldPoint(xCoord, yCoord, plane);
             String npcName = results.getString("npc_name");
-            int count = ((outerMap.get(point) != null && outerMap.get(point).get(npcName) != null)
+            int count = 1 + ((outerMap.get(point) != null && outerMap.get(point).get(npcName) != null)
                     ? outerMap.get(point).get(npcName)
-                    : 0) + 1;
+                    : 0);
             HashMap<String, Integer> innerMap = new HashMap<>();
 
             innerMap.put(npcName, count);
