@@ -30,6 +30,8 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Actor;
 import net.runelite.api.Skill;
 import net.runelite.api.coords.WorldPoint;
+import net.runelite.client.RuneLite;
+import net.runelite.client.game.ItemStack;
 import org.mariadb.jdbc.MariaDbDataSource;
 import org.sqlite.SQLiteDataSource;
 
@@ -124,10 +126,8 @@ public class Database {
                                              """);
     }
 
-
     void insertKill(String username, LocalDateTime dateTime, Actor npc, WorldPoint location, int world) {
-        String sql =
-                "INSERT INTO " + tableNameKills +
+        String sql = "INSERT INTO " + tableNameKills +
                 " (username, update_time, npc_name, npc_level, x_coord, y_coord, plane, world) " +
                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
 
@@ -135,6 +135,7 @@ public class Database {
 
         try (PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
             int index = 0;
+
             preparedStatement.setString(++index, username);
             preparedStatement.setTimestamp(++index, Timestamp.valueOf(dateTime));
             preparedStatement.setString(++index, npc.getName());
@@ -151,18 +152,17 @@ public class Database {
     }
 
     void insertXp(String username, LocalDateTime dateTime, Map<Skill, Integer> skills, WorldPoint location, int world) {
-        String sql = "INSERT INTO " + tableNameXp + " (username, update_time, ?, x_coord, y_coord, plane, world) " +
-                "VALUES (?, ?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO " + tableNameXp +
+                     " (username, update_time, " + SKILLS.get().collect(Collectors.joining(", ")) + ", x_coord, y_coord, plane, world) " +
+                     "VALUES (?, ?, " + skills.values().stream().map(String::valueOf).collect(Collectors.joining(", ")) + ", ?, ?, ?, ?)";
 
         establishConnection(false);
 
         try (PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
             int index = 0;
-            preparedStatement.setString(++index, SKILLS.get().collect(Collectors.joining(", ")));
+
             preparedStatement.setString(++index, username);
             preparedStatement.setTimestamp(++index, Timestamp.valueOf(dateTime));
-            preparedStatement.setString(++index,
-                    skills.values().stream().map(String::valueOf).collect(Collectors.joining(", ")));
             preparedStatement.setInt(++index, location.getX());
             preparedStatement.setInt(++index, location.getY());
             preparedStatement.setInt(++index, location.getPlane());
@@ -174,8 +174,7 @@ public class Database {
         }
     }
 
-    @SneakyThrows
-    void insertLoot(String username, Actor npc, int itemId, int quantity) {
+    void insertLoot(String username, Actor npc, ItemStack itemStack) {
         String npcName = npc.getName();
         int npcLevel = npc.getCombatLevel();
         ResultSet resultSet;
@@ -184,38 +183,35 @@ public class Database {
 
         try {
             try (PreparedStatement selectStatement = connection.prepareStatement(
-                    "SELECT * FROM ? WHERE username = ? AND npc_name = ? AND npc_level = ? AND item_id = ?")) {
+                    "SELECT * FROM " + tableNameLoot + " WHERE username = ? AND npc_name = ? AND npc_level = ? AND item_id = ?")) {
                 int index = 0;
 
-                selectStatement.setString(++index, tableNameLoot);
                 selectStatement.setString(++index, username);
                 selectStatement.setString(++index, npcName);
                 selectStatement.setInt(++index, npcLevel);
-                selectStatement.setInt(++index, itemId);
+                selectStatement.setInt(++index, itemStack.getId());
 
                 resultSet = selectStatement.executeQuery();
             }
 
             boolean exists = resultSet.next();
             try (PreparedStatement updateStatement = connection.prepareStatement(exists
-                    ? "UPDATE ? SET quantity = ? WHERE username = ? AND npc_name = ? AND npc_level = ? AND item_id = ?"
-                    : "INSERT INTO ? VALUES (?, ?, ?, ?, ?)")) {
+                    ? "UPDATE " + tableNameLoot + " SET quantity = ? WHERE username = ? AND npc_name = ? AND npc_level = ? AND item_id = ?"
+                    : "INSERT INTO " + tableNameLoot + " VALUES (?, ?, ?, ?, ?)")) {
                 int index = 0;
 
-                updateStatement.setString(++index, tableNameLoot);
-
                 if (exists) {
-                    updateStatement.setInt(++index, quantity + resultSet.getInt("quantity"));
+                    updateStatement.setInt(++index, itemStack.getQuantity() + resultSet.getInt("quantity"));
                     updateStatement.setString(++index, username);
                     updateStatement.setString(++index, npcName);
                     updateStatement.setInt(++index, npcLevel);
-                    updateStatement.setInt(++index, itemId);
+                    updateStatement.setInt(++index, itemStack.getId());
                 } else {
                     updateStatement.setString(++index, username);
                     updateStatement.setString(++index, npcName);
                     updateStatement.setInt(++index, npcLevel);
-                    updateStatement.setInt(++index, itemId);
-                    updateStatement.setInt(++index, quantity);
+                    updateStatement.setInt(++index, itemStack.getId());
+                    updateStatement.setInt(++index, itemStack.getQuantity());
                 }
 
                 updateStatement.executeUpdate();
