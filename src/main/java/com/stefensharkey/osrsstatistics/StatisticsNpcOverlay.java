@@ -47,7 +47,7 @@ public class StatisticsNpcOverlay extends Overlay {
         this.tooltipManager = tooltipManager;
         this.itemManager = itemManager;
         database = new Database(config);
-        updateLoot();
+        updateMaps();
     }
 
     @Override
@@ -57,7 +57,7 @@ public class StatisticsNpcOverlay extends Overlay {
                 return null;
             }
 
-            updateLoot();
+            updateMaps();
 
             Point mouseCanvasPoint =
                     new Point(client.getMouseCanvasPosition().getX(), client.getMouseCanvasPosition().getY());
@@ -118,7 +118,7 @@ public class StatisticsNpcOverlay extends Overlay {
         }
     }
 
-    private void updateLoot() {
+    private void updateMaps() {
         Actor player = client.getLocalPlayer();
 
         // If the player exists, and has received a loot update since the overlay last checked for one, repopulate the
