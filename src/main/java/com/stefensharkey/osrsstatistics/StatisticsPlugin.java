@@ -185,7 +185,7 @@ public class StatisticsPlugin extends Plugin {
             lastUpdatedLoot = now();
 
             npcLootReceived.getItems().forEach(itemStack ->
-                    database.insertLoot(player.getName(), npc, itemStack.getId(), itemStack.getQuantity())
+                    database.insertLoot(player.getName(), npc, itemStack)
             );
         }
     }
