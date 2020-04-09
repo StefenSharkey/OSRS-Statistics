@@ -193,14 +193,12 @@ public class StatisticsPlugin extends Plugin {
     @Subscribe
     public void onConfigChanged(ConfigChanged configChanged) {
         switch (configChanged.getKey()) {
-            case "databasetype":
-            case "databaseserverip":
-            case "databaseusername":
-            case "databasepassword":
-            case "databasename":
-            case "databasetableprefix":
-                database.updateConfig(config);
-                break;
+            case "databasetype",
+                 "databaseserverip",
+                 "databaseusername",
+                 "databasepassword",
+                 "databasename",
+                 "databasetableprefix" -> database.updateConfig(config);
         }
     }
 
