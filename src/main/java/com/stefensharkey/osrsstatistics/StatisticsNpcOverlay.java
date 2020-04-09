@@ -32,7 +32,10 @@ public class StatisticsNpcOverlay extends Overlay {
     private final Database database;
 
     private ResultSet loot;
-    private LocalDateTime lastUpdated;
+    private LocalDateTime lastUpdatedLoot;
+
+    private ResultSet kills;
+    private LocalDateTime lastUpdatedKill;
 
     @Inject
     StatisticsNpcOverlay(Client client, StatisticsPlugin plugin, StatisticsConfig config, TooltipManager tooltipManager, ItemManager itemManager) {
@@ -77,12 +80,25 @@ public class StatisticsNpcOverlay extends Overlay {
         try {
             StringBuilder tooltip = new StringBuilder();
             String npcName = npc.getName();
+            int npcLevel = npc.getCombatLevel();
+            int numKills = 0;
+
+            while (kills.next()) {
+                String name = loot.getString("npc_name");
+                int level = loot.getInt("npc_level");
+
+                if (npcName != null && npcName.equals(name) && npcLevel == level) {
+                    numKills++;
+                }
+            }
+
+            tooltip.append("Kills: ").append(numKills).append("</br></br>Loot:</br>");
 
             while (loot.next()) {
                 String name = loot.getString("npc_name");
                 int level = loot.getInt("npc_level");
 
-                if (npcName != null && npcName.equals(name) && npc.getCombatLevel() == level) {
+                if (npcName != null && npcName.equals(name) && npcLevel == level) {
                     int id = loot.getInt("item_id");
                     int quantity = loot.getInt("quantity");
 
@@ -105,12 +121,19 @@ public class StatisticsNpcOverlay extends Overlay {
     private void updateLoot() {
         Actor player = client.getLocalPlayer();
 
-        // If the player exists, and has received an XP update since the overlay last checked for one, repopulate the
-        // local XP map and make note of it.
-        if (player != null && (lastUpdated == null || lastUpdated.isBefore(plugin.lastUpdatedLoot))) {
-            lastUpdated = plugin.lastUpdatedLoot;
+        // If the player exists, and has received a loot update since the overlay last checked for one, repopulate the
+        // local loot map and make note of it.
+        if (player != null && (lastUpdatedLoot == null || lastUpdatedLoot.isBefore(plugin.lastUpdatedLoot))) {
+            lastUpdatedLoot = plugin.lastUpdatedLoot;
 
             loot = database.retrieveLoot(player.getName());
+        }
+
+        // If the player exists, and has received a kill update since the overlay last checked for one, repopulate the
+        // local kill map and make note of it.
+        if (player != null && (lastUpdatedKill == null || lastUpdatedKill.isBefore(plugin.lastUpdatedKill))) {
+            lastUpdatedKill = plugin.lastUpdatedKill;
+            kills = database.retrieveKill(client.getUsername());
         }
     }
 }
