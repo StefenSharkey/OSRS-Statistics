@@ -24,14 +24,17 @@
  */
 package com.stefensharkey.osrsstatistics;
 
+import com.mysql.jdbc.jdbc2.optional.MysqlDataSource;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Actor;
 import net.runelite.api.Skill;
 import net.runelite.api.coords.WorldPoint;
 import org.mariadb.jdbc.MariaDbDataSource;
+import org.sqlite.SQLiteDataSource;
 
 import javax.sql.DataSource;
+import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -52,6 +55,7 @@ import java.util.stream.Stream;
 public class Database {
 
     private DataSource dataSource;
+    private Connection connection;
 
     private String tableNameKills;
     private String tableNameLoot;
@@ -70,6 +74,8 @@ public class Database {
     private synchronized void createDatabase() {
         String skills = SKILLS.get()
                 .collect(Collectors.joining(" INT UNSIGNED NOT NULL, ")) + " INT UNSIGNED NOT NULL, ";
+
+        establishConnection(false);
 
         // XP Table
         connection.createStatement().execute("CREATE TABLE IF NOT EXISTS " + tableNameXp +
@@ -125,8 +131,9 @@ public class Database {
                 " (username, update_time, npc_name, npc_level, x_coord, y_coord, plane, world) " +
                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
 
-        try (Connection connection = dataSource.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+        establishConnection(false);
+
+        try (PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
             int index = 0;
             preparedStatement.setString(++index, username);
             preparedStatement.setTimestamp(++index, Timestamp.valueOf(dateTime));
@@ -147,8 +154,9 @@ public class Database {
         String sql = "INSERT INTO " + tableNameXp + " (username, update_time, ?, x_coord, y_coord, plane, world) " +
                 "VALUES (?, ?, ?, ?, ?, ?, ?)";
 
-        try (Connection connection = dataSource.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+        establishConnection(false);
+
+        try (PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
             int index = 0;
             preparedStatement.setString(++index, SKILLS.get().collect(Collectors.joining(", ")));
             preparedStatement.setString(++index, username);
@@ -170,9 +178,11 @@ public class Database {
     void insertLoot(String username, Actor npc, int itemId, int quantity) {
         String npcName = npc.getName();
         int npcLevel = npc.getCombatLevel();
-        ResultSet resultSet = null;
+        ResultSet resultSet;
 
-        try (Connection connection = dataSource.getConnection()) {
+        establishConnection(false);
+
+        try {
             try (PreparedStatement selectStatement = connection.prepareStatement(
                     "SELECT * FROM ? WHERE username = ? AND npc_name = ? AND npc_level = ? AND item_id = ?")) {
                 int index = 0;
@@ -228,14 +238,9 @@ public class Database {
     }
 
     private ResultSet retrieve(String tableName, String username) {
-        try (Connection connection = dataSource.getConnection();
-             PreparedStatement preparedStatement =
-                     connection.prepareStatement("SELECT * FROM ? WHERE username = ?")) {
-            int index = 0;
-
-            preparedStatement.setString(++index, tableName);
-            preparedStatement.setString(++index, username);
-
+        try (PreparedStatement preparedStatement =
+                     connection.prepareStatement("SELECT * FROM " + tableName + " WHERE username = ?")) {
+            preparedStatement.setString(1, username);
             return preparedStatement.executeQuery();
         } catch (SQLException e) {
             log.error("SQL Error", e);
@@ -401,19 +406,37 @@ public class Database {
 
 
     @SuppressWarnings("HardcodedFileSeparator")
-    void updateConfig(StatisticsConfig config) {
-        String url = String.format("jdbc:%s://%s/%s?user=%s&password=%s",
-                config.databaseType().getName(),
-                config.databaseServerIp(),
-                config.databaseName(),
-                config.databaseUsername(),
-                config.databasePassword());
+    @SneakyThrows
+    synchronized void updateConfig(StatisticsConfig config) {
+        dataSource = switch (config.databaseType()) {
+            case SQLITE -> {
+                SQLiteDataSource tmpDataSource = new SQLiteDataSource();
+                tmpDataSource.setUrl("jdbc:sqlite:" + Path.of(RuneLite.RUNELITE_DIR.getAbsolutePath(), "heatmap").toString());
+                tmpDataSource.setDatabaseName(config.databaseName());
 
-        if (config.databaseType() == DatabaseType.MYSQL) {
-            // TODO: Determine a DataSource object for MySQL.
-        } else if (config.databaseType() == DatabaseType.MARIADB) {
-            dataSource = new MariaDbDataSource(url);
-        }
+                yield tmpDataSource;
+            }
+            case MYSQL -> {
+                MysqlDataSource tmpDataSource = new MysqlDataSource();
+                tmpDataSource.setServerName(config.databaseServerIp());
+                tmpDataSource.setDatabaseName(config.databaseName());
+                tmpDataSource.setUser(config.databaseUsername());
+                tmpDataSource.setPassword(config.databasePassword());
+
+                yield tmpDataSource;
+            }
+            case MARIADB -> {
+                MariaDbDataSource tmpDataSource = new MariaDbDataSource();
+                tmpDataSource.setServerName(config.databaseServerIp());
+                tmpDataSource.setDatabaseName(config.databaseName());
+                tmpDataSource.setUser(config.databaseUsername());
+                tmpDataSource.setPassword(config.databasePassword());
+
+                yield tmpDataSource;
+            }
+        };
+
+        establishConnection(true);
 
         tableNameKills = config.databaseTablePrefix() + "kills";
         tableNameLoot = config.databaseTablePrefix() + "loot";
@@ -422,8 +445,30 @@ public class Database {
         createDatabase();
     }
 
+    @SneakyThrows
+    private void establishConnection(boolean shouldForce) {
+        if (shouldForce) {
+            connection = dataSource.getConnection();
+        } else {
+            boolean shouldOpen = false;
+
+            try {
+                if (connection.isClosed()) {
+                    shouldOpen = true;
+                }
+            } catch (SQLException e) {
+                shouldOpen = true;
+            }
+
+            if (shouldOpen) {
+                connection = dataSource.getConnection();
+            }
+        }
+    }
+
     public enum DatabaseType {
 
+        SQLITE("sqlite"),
         MYSQL("mysql"),
         MARIADB("mariadb");
 
