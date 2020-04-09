@@ -126,7 +126,7 @@ public class Database {
                                              """);
     }
 
-    void insertKill(String username, LocalDateTime dateTime, Actor npc, WorldPoint location, int world) {
+    synchronized void insertKill(String username, LocalDateTime dateTime, Actor npc, WorldPoint location, int world) {
         String sql = "INSERT INTO " + tableNameKills +
                 " (username, update_time, npc_name, npc_level, x_coord, y_coord, plane, world) " +
                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
@@ -151,7 +151,7 @@ public class Database {
         }
     }
 
-    void insertXp(String username, LocalDateTime dateTime, Map<Skill, Integer> skills, WorldPoint location, int world) {
+    synchronized void insertXp(String username, LocalDateTime dateTime, Map<Skill, Integer> skills, WorldPoint location, int world) {
         String sql = "INSERT INTO " + tableNameXp +
                      " (username, update_time, " + SKILLS.get().collect(Collectors.joining(", ")) + ", x_coord, y_coord, plane, world) " +
                      "VALUES (?, ?, " + skills.values().stream().map(String::valueOf).collect(Collectors.joining(", ")) + ", ?, ?, ?, ?)";
@@ -174,7 +174,7 @@ public class Database {
         }
     }
 
-    void insertLoot(String username, Actor npc, ItemStack itemStack) {
+    synchronized void insertLoot(String username, Actor npc, ItemStack itemStack) {
         String npcName = npc.getName();
         int npcLevel = npc.getCombatLevel();
         ResultSet resultSet;
@@ -233,7 +233,7 @@ public class Database {
         return retrieve(tableNameXp, username);
     }
 
-    private ResultSet retrieve(String tableName, String username) {
+    synchronized private ResultSet retrieve(String tableName, String username) {
         try (PreparedStatement preparedStatement =
                      connection.prepareStatement("SELECT * FROM " + tableName + " WHERE username = ?")) {
             preparedStatement.setString(1, username);
