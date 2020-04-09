@@ -212,19 +212,6 @@ public class Database {
             }
         } catch (SQLException e) {
             log.error("SQL Error", e);
-        } finally {
-            if (resultSet != null) {
-                resultSet.close();
-            }
-        }
-    }
-
-    private void insert(String sql) {
-        try (Connection connection = dataSource.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
-            preparedStatement.executeUpdate();
-        } catch (SQLException e) {
-            log.error("SQL Error", e);
         }
     }
 
