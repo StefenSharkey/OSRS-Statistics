@@ -48,6 +48,7 @@ import net.runelite.client.ui.overlay.OverlayManager;
 
 import javax.inject.Inject;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.LinkedHashMap;
 
 @Slf4j
@@ -81,13 +82,19 @@ public class StatisticsPlugin extends Plugin {
 
     private Database database;
 
-    LocalDateTime lastUpdatedKill = Utilities.now();
-    LocalDateTime lastUpdatedLoot = Utilities.now();
-    LocalDateTime lastUpdatedXp = Utilities.now();
+    LocalDateTime lastUpdatedKill;
+    LocalDateTime lastUpdatedLoot;
+    LocalDateTime lastUpdatedXp;
 
     @Override
     protected void startUp() {
         database = new Database(config);
+
+        LocalDateTime now = now();
+        lastUpdatedKill = now;
+        lastUpdatedLoot = now;
+        lastUpdatedXp = now;
+
         overlayManager.add(killOverlay);
         overlayManager.add(npcOverlay);
         overlayManager.add(xpOverlay);
@@ -120,7 +127,7 @@ public class StatisticsPlugin extends Plugin {
                     // Sanity check for player nullability.
                     if (player != null) {
                         WorldPoint location = player.getWorldLocation();
-                        lastUpdatedXp = Utilities.now();
+                        lastUpdatedXp = now();
 
                         // Required for the thread; otherwise, the client may be reset.
                         int world = client.getWorld();
@@ -157,7 +164,7 @@ public class StatisticsPlugin extends Plugin {
 
             if (player != null) {
                 WorldPoint location = player.getWorldLocation();
-                lastUpdatedKill = Utilities.now();
+                lastUpdatedKill = now();
 
                 // Required for the thread; otherwise, the insertion becomes invalid, as the NPC is reset.
                 int world = client.getWorld();
@@ -175,7 +182,7 @@ public class StatisticsPlugin extends Plugin {
 
         if (player != null) {
             NPC npc = npcLootReceived.getNpc();
-            lastUpdatedLoot = Utilities.now();
+            lastUpdatedLoot = now();
 
             npcLootReceived.getItems().forEach(itemStack ->
                     database.insertLoot(player.getName(), npc, itemStack.getId(), itemStack.getQuantity())
@@ -216,5 +223,9 @@ public class StatisticsPlugin extends Plugin {
     @Provides
     StatisticsConfig provideConfig(ConfigManager configManager) {
         return configManager.getConfig(StatisticsConfig.class);
+    }
+
+    public LocalDateTime now() {
+        return LocalDateTime.now(ZoneId.of("America/New_York"));
     }
 }

@@ -12,19 +12,11 @@ import net.runelite.client.ui.overlay.OverlayUtil;
 import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.Polygon;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.Map;
 
 @Slf4j
 @UtilityClass
 public class Utilities {
-
-    private final ZoneId ZONE_ID = ZoneId.of("America/New_York");
-
-    public LocalDateTime now() {
-        return LocalDateTime.now(ZONE_ID);
-    }
 
     public Color getHeatMapColor(float value) {
         float[][] colors = { { 0, 0, 1 }, { 0, 1, 0 }, { 1, 1, 0 }, { 1, 0, 0 } };
