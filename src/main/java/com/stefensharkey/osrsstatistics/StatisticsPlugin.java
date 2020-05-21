@@ -187,10 +187,9 @@ public class StatisticsPlugin extends Plugin {
             NPC npc = npcLootReceived.getNpc();
 
             new Thread(() -> {
-                lastUpdatedLoot = now();
-
                 for (ItemStack itemStack : npcLootReceived.getItems()) {
                     database.insertLoot(player.getName(), npc.getId(), itemStack);
+                    lastUpdatedLoot = now();
                 }
             }).start();
         }
