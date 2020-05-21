@@ -27,13 +27,16 @@ package com.stefensharkey.osrsstatistics;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Actor;
 import net.runelite.api.Client;
+import net.runelite.api.Perspective;
 import net.runelite.api.Player;
 import net.runelite.api.Skill;
 import net.runelite.api.Tile;
+import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.ui.overlay.Overlay;
 import net.runelite.client.ui.overlay.OverlayLayer;
 import net.runelite.client.ui.overlay.OverlayPosition;
+import net.runelite.client.ui.overlay.OverlayUtil;
 import net.runelite.client.ui.overlay.tooltip.Tooltip;
 import net.runelite.client.ui.overlay.tooltip.TooltipManager;
 import net.runelite.client.util.ColorUtil;
@@ -41,6 +44,7 @@ import net.runelite.client.util.ColorUtil;
 import javax.inject.Inject;
 import java.awt.Dimension;
 import java.awt.Graphics2D;
+import java.awt.Polygon;
 import java.time.LocalDateTime;
 import java.util.EnumMap;
 import java.util.Map;
@@ -54,9 +58,10 @@ public class StatisticsXpOverlay extends Overlay {
     private final TooltipManager tooltipManager;
     private final Database database;
 
-    private Map<WorldPoint, EnumMap<Skill, Integer[]>> xpDeltaMap;
-    private Map<WorldPoint, EnumMap<Skill, Double>> xpTotalMap;
-    private Map<WorldPoint, Double> xpCountMap;
+    private Map<WorldPoint, EnumMap<Skill, Integer[]>> xpMap;
+    private int tileIndex;
+    private int tooltipIndex;
+
     private LocalDateTime lastUpdated;
 
     @Inject
@@ -79,11 +84,14 @@ public class StatisticsXpOverlay extends Overlay {
             Player player = client.getLocalPlayer();
 
             if (player != null) {
-                Utilities.renderTiles(client, graphics, player, config.shouldXpOverlayShowTotal() ? xpTotalMap : xpCountMap);
-            }
+                tileIndex = config.shouldXpOverlayShowTotal() ? 0 : 1;
+                tooltipIndex = config.shouldXpTooltipHighlightTotal() ? 0 : 1;
 
-            if (config.isXpTooltipEnabled()) {
-                renderTooltip();
+                renderTiles(graphics);
+
+                if (config.isXpTooltipEnabled()) {
+                    renderTooltip();
+                }
             }
         }
 
@@ -96,43 +104,84 @@ public class StatisticsXpOverlay extends Overlay {
         if (selectedTile != null) {
             WorldPoint worldPoint = selectedTile.getWorldLocation();
 
-            if (xpDeltaMap.containsKey(worldPoint)) {
+            if (xpMap.containsKey(worldPoint)) {
                 StringBuilder tooltip = new StringBuilder()
                         .append("X: ").append(worldPoint.getX())
                         .append(", Y: ").append(worldPoint.getY())
                         .append(", Plane: ").append(worldPoint.getPlane())
                         .append("</br>");
 
-                xpDeltaMap.forEach((point, skillEnumMap) -> {
-                    if (WorldPointHelper.equals(point, worldPoint)) {
-                        int index = config.shouldXpTooltipHighlightTotal() ? 0 : 1;
+                for (Map.Entry<WorldPoint, EnumMap<Skill, Integer[]>> entry : xpMap.entrySet()) {
+                    EnumMap<Skill, Integer[]> skillEnumMap = entry.getValue();
 
-                        int max = skillEnumMap
-                                .values()
-                                .stream()
-                                .map(integers -> integers[index])
-                                .mapToInt(entry -> entry)
-                                .filter(entry -> entry >= 0)
-                                .max()
-                                .orElse(0);
+                    int max = 0;
 
-                        skillEnumMap.forEach((skill, values) -> {
-                            if (values[0] > 0) {
+                    for (Integer[] tileValues : skillEnumMap.values()) {
+                        if (tileValues[tooltipIndex] > max) {
+                            max = tileValues[tooltipIndex];
+                        }
+                    }
+
+                    if (WorldPointHelper.equals(entry.getKey(), worldPoint)) {
+                        for (Map.Entry<Skill, Integer[]> entry1 : skillEnumMap.entrySet()) {
+                            Integer[] experience = entry1.getValue();
+
+                            if (experience[0] > 0) {
                                 tooltip
-                                    .append(ColorUtil.colorTag(Utilities.getHeatMapColor(values[index] / (float) max)))
-                                    .append(skill.getName())
+                                    .append(ColorUtil.colorTag(
+                                            Utilities.getHeatMapColor(experience[tooltipIndex] / (float) max)))
+                                    .append(entry1.getKey().getName())
                                     .append(": ")
-                                    .append(values[0])
+                                    .append(experience[0])
                                     .append(" (")
-                                    .append(values[1])
+                                    .append(experience[1])
                                     .append(")</br>");
                             }
-                        });
+                        }
                     }
-                });
+                }
 
                 tooltipManager.add(new Tooltip(tooltip.substring(0, tooltip.lastIndexOf("</br>"))));
             }
+        }
+    }
+
+    public void renderTiles(Graphics2D graphics) {
+        if (xpMap != null) {
+            int max = 0;
+
+            for (EnumMap<Skill, Integer[]> entry : xpMap.values()) {
+                for (Integer[] entry1 : entry.values()) {
+                    if (entry1[tileIndex] > max) {
+                        max = entry1[tileIndex];
+                    }
+                }
+            }
+
+            for (Map.Entry<WorldPoint, EnumMap<Skill, Integer[]>> entry : xpMap.entrySet()) {
+                WorldPoint point = entry.getKey();
+                EnumMap<Skill, Integer[]> value = entry.getValue();
+
+                LocalPoint tileLocation = LocalPoint.fromWorld(client, point.getX(), point.getY());
+
+                if (value != null && tileLocation != null && point.getPlane() == client.getPlane()) {
+                    renderTile(graphics, tileLocation, value, max);
+                }
+            }
+        }
+    }
+
+    private void renderTile(Graphics2D graphics, LocalPoint tileLocation, EnumMap<Skill, Integer[]> tileValue, int max) {
+        Polygon polygon = Perspective.getCanvasTilePoly(client, tileLocation);
+
+        if (polygon != null) {
+            double renderValue = 0.0;
+
+            for (Integer[] value : tileValue.values()) {
+                renderValue += value[tileIndex];
+            }
+
+            OverlayUtil.renderPolygon(graphics, polygon, Utilities.getHeatMapColor((float) (renderValue / max)));
         }
     }
 
@@ -144,9 +193,7 @@ public class StatisticsXpOverlay extends Overlay {
         if (player != null && (lastUpdated == null || lastUpdated.isBefore(plugin.lastUpdatedXp))) {
             lastUpdated = plugin.lastUpdatedXp;
 
-            xpDeltaMap = database.retrieveXpDeltaMap(player.getName(), false);
-            xpTotalMap = database.retrieveXpTotalMap(player.getName(), true, false);
-            xpCountMap = database.retrieveXpCountMap(player.getName(), true, false);
+            xpMap = database.retrieveXpMap(client, false);
         }
     }
 }

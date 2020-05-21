@@ -27,6 +27,7 @@ package com.stefensharkey.osrsstatistics;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
+import net.runelite.api.Skill;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.RuneLite;
 
@@ -46,6 +47,7 @@ import java.net.URL;
 import java.nio.channels.Channels;
 import java.nio.channels.FileChannel;
 import java.nio.channels.ReadableByteChannel;
+import java.util.EnumMap;
 import java.util.Map;
 
 @Slf4j
@@ -69,7 +71,7 @@ public class HeatMap implements Runnable {
             IS_GENERATING = true;
             client.addChatMessage(ChatMessageType.GAMEMESSAGE, "","Heat map is generating...", null);
 
-            Map<WorldPoint, Double> data = database.retrieveXpCountMap(client.getUsername(), false, true);
+            Map<WorldPoint, EnumMap<Skill, Integer[]>> data = database.retrieveXpMap(client, true);
             BufferedImage map = ImageIO.read(getMap());
             Graphics2D graphics = map.createGraphics();
 

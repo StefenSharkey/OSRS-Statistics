@@ -126,21 +126,19 @@ public class StatisticsPlugin extends Plugin {
                 // Occasionally, this method will be fired undesirably. To counteract this, only proceed if there is
                 // actually an XP change.
                 if (skillXpCache.get(skill) != xp) {
-                    skillXpCache.put(skill, xp);
                     Player player = client.getLocalPlayer();
 
                     // Sanity check for player nullability.
                     if (player != null) {
-                        WorldPoint location = player.getWorldLocation();
-                        lastUpdatedXp = now();
-
-                        // Required for the thread; otherwise, the client may be reset.
-                        int world = client.getWorld();
+                        int delta = xp - skillXpCache.get(skill);
 
                         // Insert into the database within a thread so
-                        new Thread(() ->
-                                database.insertXp(player.getName(), lastUpdatedKill, skillXpCache, location, world)
-                        ).start();
+                        skillXpCache.put(skill, xp);
+
+                        new Thread(() -> {
+                            database.insertXp(player, skill, delta, client.getWorld());
+                            lastUpdatedXp = now();
+                        }).start();
                     }
                 }
             }

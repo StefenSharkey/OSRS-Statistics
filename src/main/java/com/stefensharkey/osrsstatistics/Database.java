@@ -27,7 +27,8 @@ package com.stefensharkey.osrsstatistics;
 import com.mysql.jdbc.jdbc2.optional.MysqlDataSource;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.api.Actor;
+import net.runelite.api.Client;
+import net.runelite.api.Player;
 import net.runelite.api.Skill;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.RuneLite;
@@ -43,15 +44,13 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.function.Supplier;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
-import java.util.stream.Stream;
 
 @Slf4j
 public class Database {
@@ -63,37 +62,37 @@ public class Database {
     private String tableNameLoot;
     private String tableNameXp;
 
-    private static final Supplier<Stream<String>> SKILLS = () ->
-            Stream.of(Arrays.copyOf(Skill.values(), Skill.values().length - 1))
-                    .map(Skill::getName)
-                    .map(String::toLowerCase);
-
     Database(StatisticsConfig config) {
         updateConfig(config);
     }
 
     @SneakyThrows
     private synchronized void createDatabase() {
-        String skills = SKILLS.get()
-                .collect(Collectors.joining(" INT UNSIGNED NOT NULL, ")) + " INT UNSIGNED NOT NULL, ";
-
         establishConnection(false);
+
+        List<String> skills = new ArrayList<>((Skill.values().length - 1) << 1);
+        for (Skill skill : Arrays.copyOf(Skill.values(), Skill.values().length - 1)) {
+            String s = skill.getName().toLowerCase();
+            skills.add(s);
+            skills.add(s + "_num");
+        }
 
         // XP Table
         connection.createStatement().execute("CREATE TABLE IF NOT EXISTS " + tableNameXp +
-                                             """
-                                             (
-                                                 id INT NOT NULL AUTO_INCREMENT,
-                                                 username VARCHAR(320) NOT NULL,
-                                                 update_time DATETIME(3) NOT NULL,
-                                             """ + skills + """
-                                                 x_coord MEDIUMINT NOT NULL,
-                                                 y_coord MEDIUMINT NOT NULL,
-                                                 plane TINYINT NOT NULL,
-                                                 world SMALLINT UNSIGNED NOT NULL,
-                                                 PRIMARY KEY (id)
-                                             )
-                                             """);
+                """
+                (
+                    username VARCHAR(50) NOT NULL,
+                    x_coord MEDIUMINT UNSIGNED NOT NULL,
+                    y_coord MEDIUMINT UNSIGNED NOT NULL,
+                    plane TINYINT UNSIGNED NOT NULL,
+                    world SMALLINT UNSIGNED NOT NULL,
+                """ +
+                String.join(" INT UNSIGNED NOT NULL DEFAULT 0, ", skills) +
+                " INT UNSIGNED NOT NULL DEFAULT 0, " +
+                """
+                    PRIMARY KEY (username, x_coord, y_coord, plane, world)
+                )
+                """);
 
         // Kill Table
         connection.createStatement().execute("CREATE TABLE IF NOT EXISTS " + tableNameKills +
@@ -148,26 +147,63 @@ public class Database {
         }
     }
 
-    synchronized void insertXp(String username, LocalDateTime dateTime, Map<Skill, Integer> skills, WorldPoint location, int world) {
-        String sql = "INSERT INTO " + tableNameXp +
-                     " (username, update_time, " + SKILLS.get().collect(Collectors.joining(", ")) + ", x_coord, y_coord, plane, world) " +
-                     "VALUES (?, ?, " + skills.values().stream().map(String::valueOf).collect(Collectors.joining(", ")) + ", ?, ?, ?, ?)";
+    @SneakyThrows
+    synchronized void insertXp(Player player, Skill skill, int delta, int world) {
+        String name = player.getName();
+        WorldPoint location = player.getWorldLocation();
+        String selectSql = "SELECT * FROM " + tableNameXp + " WHERE username = ? AND x_coord = ? AND y_coord = ? AND plane = ?";
+        ResultSet resultSet;
 
-        establishConnection(false);
-
-        try (PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+        try (PreparedStatement preparedStatement = connection.prepareStatement(selectSql)) {
             int index = 0;
 
-            preparedStatement.setString(++index, username);
-            preparedStatement.setTimestamp(++index, Timestamp.valueOf(dateTime));
+            preparedStatement.setString(++index, name);
             preparedStatement.setInt(++index, location.getX());
             preparedStatement.setInt(++index, location.getY());
             preparedStatement.setInt(++index, location.getPlane());
-            preparedStatement.setInt(++index, world);
 
-            preparedStatement.executeUpdate();
-        } catch (SQLException e) {
-            log.error("SQL Error", e);
+            resultSet = preparedStatement.executeQuery();
+        }
+
+        if (resultSet.next()) {
+            String updateSql = "UPDATE " + tableNameXp + " SET " + skill.getName().toLowerCase() + " = ?, " +
+                    skill.getName().toLowerCase() + "_num = ?" +
+                    " WHERE username = ? AND x_coord = ? AND y_coord = ? AND plane = ?";
+
+            establishConnection(false);
+
+            try (PreparedStatement preparedStatement = connection.prepareStatement(updateSql)) {
+                int index = 0;
+
+                preparedStatement.setInt(++index, delta + resultSet.getInt(skill.getName()));
+                preparedStatement.setInt(++index, resultSet.getInt(skill.getName() + "_num") + 1);
+                preparedStatement.setString(++index, name);
+                preparedStatement.setInt(++index, location.getX());
+                preparedStatement.setInt(++index, location.getY());
+                preparedStatement.setInt(++index, location.getPlane());
+
+                preparedStatement.executeUpdate();
+            }
+        } else {
+            String insertSql = "INSERT INTO " + tableNameXp +
+                    " (username, x_coord, y_coord, plane, world, " + skill.getName().toLowerCase() + ", " +
+                    skill.getName().toLowerCase() + "_num) " + "VALUES (?, ?, ?, ?, ?, ?, ?)";
+
+            establishConnection(false);
+
+            try (PreparedStatement preparedStatement = connection.prepareStatement(insertSql)) {
+                int index = 0;
+
+                preparedStatement.setString(++index, name);
+                preparedStatement.setInt(++index, location.getX());
+                preparedStatement.setInt(++index, location.getY());
+                preparedStatement.setInt(++index, location.getPlane());
+                preparedStatement.setInt(++index, world);
+                preparedStatement.setInt(++index, delta);
+                preparedStatement.setInt(++index, 1);
+
+                preparedStatement.executeUpdate();
+            }
         }
     }
 
@@ -221,10 +257,6 @@ public class Database {
         return retrieve(tableNameLoot, username);
     }
 
-    ResultSet retrieveXp(String username) {
-        return retrieve(tableNameXp, username);
-    }
-
     private synchronized ResultSet retrieve(String tableName, String username) {
         try (PreparedStatement preparedStatement =
                      connection.prepareStatement("SELECT * FROM " + tableName + " WHERE username = ?")) {
@@ -263,125 +295,46 @@ public class Database {
     }
 
     @SneakyThrows
-    Map<WorldPoint, Double> retrieveXpCountMap(String username, boolean normalized, boolean modifiedPoints) {
-        ResultSet results = retrieveXp(username);
-        Map<WorldPoint, Double> map = new LinkedHashMap<>();
-        double[] max = {0.0};
+    Map<WorldPoint, EnumMap<Skill, Integer[]>> retrieveXpMap(Client client, boolean modifiedPoints) {
+        ResultSet resultSet;
 
-        while (results.next()) {
-            int xCoord = results.getInt("x_coord");
-            int yCoord = results.getInt("y_coord");
-            int plane = results.getInt("plane");
-            WorldPoint point = modifiedPoints
-                    ? new WorldPoint(getModifiedX(xCoord), getModifiedY(yCoord), plane)
-                    : new WorldPoint(xCoord, yCoord, plane);
-            double sum = map.getOrDefault(point, 0.0) + 1.0;
+        try (PreparedStatement preparedStatement = connection.prepareStatement("SELECT * FROM " + tableNameXp +
+                             " WHERE username = ? AND x_coord >= ? AND x_coord <= ? AND y_coord >= ? AND y_coord <= ? AND plane = ?")) {
+            int index = 0;
+            WorldPoint point = client.getLocalPlayer().getWorldLocation();
 
-            if (sum > max[0]) {
-                max[0] = sum;
+            preparedStatement.setString(++index, client.getLocalPlayer().getName());
+            preparedStatement.setInt(++index, point.getX() - 45);
+            preparedStatement.setInt(++index, point.getX() + 45);
+            preparedStatement.setInt(++index, point.getY() - 45);
+            preparedStatement.setInt(++index, point.getY() + 45);
+            preparedStatement.setInt(++index, point.getPlane());
+            resultSet = preparedStatement.executeQuery();
+
+            Map<WorldPoint, EnumMap<Skill, Integer[]>> map = new LinkedHashMap<>();
+
+            while (resultSet.next()) {
+                int xCoord = resultSet.getInt("x_coord");
+                int yCoord = resultSet.getInt("y_coord");
+                int plane = resultSet.getInt("plane");
+
+                point = new WorldPoint(modifiedPoints ? getModifiedX(xCoord) : xCoord,
+                        modifiedPoints ? getModifiedY(yCoord) : yCoord, plane);
+
+                EnumMap<Skill, Integer[]> skillXpMap = new EnumMap<>(Skill.class);
+
+                for (int x = 0; x < Skill.values().length - 1; x++) {
+                    String skillName = Skill.values()[x].getName();
+
+                    skillXpMap.put(Skill.valueOf(skillName.replace("_num", "").toUpperCase()),
+                            new Integer[] {resultSet.getInt(skillName), resultSet.getInt(skillName + "_num")});
+                }
+
+                map.put(point, skillXpMap);
             }
 
-            map.put(point, sum);
+            return map;
         }
-
-        if (normalized && max[0] > 0.0) {
-            map.replaceAll((point, sum) -> sum / max[0]);
-        }
-
-        return map;
-    }
-
-    @SneakyThrows
-    Map<WorldPoint, EnumMap<Skill, Double>> retrieveXpTotalMap(String username, boolean normalized, boolean modifiedPoints) {
-        ResultSet results = retrieveXp(username);
-        Map<WorldPoint, EnumMap<Skill, Double>> map = new LinkedHashMap<>();
-        double[] max = {0.0};
-
-        while (results.next()) {
-            int xCoord = results.getInt("x_coord");
-            int yCoord = results.getInt("y_coord");
-            int plane = results.getInt("plane");
-            WorldPoint point = modifiedPoints
-                    ? new WorldPoint(getModifiedX(xCoord), getModifiedY(yCoord), plane)
-                    : new WorldPoint(xCoord, yCoord, plane);
-            EnumMap<Skill, Double> skillXpMap = new EnumMap<>(Skill.class);
-
-            SKILLS.get().collect(Collectors.toSet()).forEach(skillName -> {
-                try {
-                    double xpValue = results.getInt(skillName);
-
-                    if (xpValue > max[0]) {
-                        max[0] = xpValue;
-                    }
-
-                    skillXpMap.put(Skill.valueOf(skillName.toUpperCase()), xpValue);
-                } catch (SQLException e) {
-                    e.printStackTrace();
-                }
-            });
-
-            map.put(point, skillXpMap);
-        }
-
-        if (normalized && max[0] > 0.0) {
-            map.forEach((point, skillMap) -> skillMap.replaceAll((skill, value) -> value / max[0]));
-        }
-
-        return map;
-    }
-
-    @SneakyThrows
-    Map<WorldPoint, EnumMap<Skill, Integer[]>> retrieveXpDeltaMap(String username, boolean modifiedPoints) {
-        ResultSet results = retrieveXp(username);
-        Map<WorldPoint, EnumMap<Skill, Integer[]>> map = new LinkedHashMap<>();
-
-        while (results.next()) {
-            int xCoord = results.getInt("x_coord");
-            int yCoord = results.getInt("y_coord");
-            int plane = results.getInt("plane");
-            WorldPoint point = modifiedPoints
-                    ? new WorldPoint(getModifiedX(xCoord), getModifiedY(yCoord), plane)
-                    : new WorldPoint(xCoord, yCoord, plane);
-            EnumMap<Skill, Integer[]> skillXpMap = new EnumMap<>(Skill.class);
-
-            SKILLS.get().collect(Collectors.toSet()).forEach(skillName -> {
-                try {
-                    Skill skill = Skill.valueOf(skillName.toUpperCase());
-
-                    // xpValues[0] is total XP gained on tile
-                    // xpValues[1] is number of times XP gained on tile
-                    Integer[] xpValues = new Integer[2];
-
-                    xpValues[0] = results.getInt(skillName);
-
-                    // If a value already existed in the previous row, subtract it from the current value to get the
-                    // delta.
-                    if (results.previous()) {
-                        xpValues[0] -= results.getInt(skillName);
-                    }
-
-                    results.next();
-
-                    // If XP was never obtained on that tile, then the count is zero; otherwise, note the delta.
-                    xpValues[1] = xpValues[0] > 0 ? 1 : 0;
-
-                    // If the point was already mapped and had a skill mapped to it, .
-                    if (map.get(point) != null && map.get(point).get(skill) != null) {
-                        IntStream.range(0, map.get(point).get(skill).length).forEach(x ->
-                                xpValues[x] += map.get(point).get(skill)[x]
-                        );
-                    }
-
-                    skillXpMap.put(skill, xpValues);
-                } catch (SQLException e) {
-                    e.printStackTrace();
-                }
-            });
-
-            map.put(point, skillXpMap);
-        }
-
-        return map;
     }
 
     private int getModifiedX (int x) {
