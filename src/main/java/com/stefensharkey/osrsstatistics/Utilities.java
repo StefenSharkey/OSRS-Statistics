@@ -2,17 +2,8 @@ package com.stefensharkey.osrsstatistics;
 
 import lombok.experimental.UtilityClass;
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.api.Actor;
-import net.runelite.api.Client;
-import net.runelite.api.Perspective;
-import net.runelite.api.coords.LocalPoint;
-import net.runelite.api.coords.WorldPoint;
-import net.runelite.client.ui.overlay.OverlayUtil;
 
 import java.awt.Color;
-import java.awt.Graphics2D;
-import java.awt.Polygon;
-import java.util.Map;
 
 @Slf4j
 @UtilityClass
@@ -39,39 +30,5 @@ public class Utilities {
         return new Color((colors[index2][0] - colors[index1][0]) * fractionBetween + colors[index1][0],
                 (colors[index2][1] - colors[index1][1]) * fractionBetween + colors[index1][1],
                 (colors[index2][2] - colors[index1][2]) * fractionBetween + colors[index1][2]);
-    }
-
-    public void renderTiles(Client client, Graphics2D graphics, Actor player, Map<WorldPoint, ?> map) {
-        LocalPoint localLocation = player.getLocalLocation();
-        int maxDistance = 2350;
-
-        if (map != null) {
-            map.forEach((point, value) -> {
-                LocalPoint tileLocation = LocalPoint.fromWorld(client, point.getX(), point.getY());
-                int plane = point.getPlane();
-
-                if (tileLocation != null
-                        && plane == client.getPlane()
-                        && localLocation.distanceTo(tileLocation) <= maxDistance) {
-                    renderTile(client, graphics, tileLocation, value);
-                }
-            });
-        }
-    }
-
-    private void renderTile(Client client, Graphics2D graphics, LocalPoint tileLocation, Object tileValue) {
-        Polygon polygon = Perspective.getCanvasTilePoly(client, tileLocation);
-
-        if (polygon != null) {
-            Double[] renderValue = {0.0};
-
-            if (tileValue instanceof Map map) {
-                map.forEach((key, value) -> renderValue[0] += (double) value);
-            } else if (tileValue instanceof Double num) {
-                renderValue[0] = num;
-            }
-
-            OverlayUtil.renderPolygon(graphics, polygon, getHeatMapColor(renderValue[0].floatValue()));
-        }
     }
 }

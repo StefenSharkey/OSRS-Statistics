@@ -98,15 +98,14 @@ public class Database {
         connection.createStatement().execute("CREATE TABLE IF NOT EXISTS " + tableNameKills +
                                              """
                                              (
-                                                 id INT NOT NULL AUTO_INCREMENT,
-                                                 username VARCHAR(320) NOT NULL,
-                                                 update_time DATETIME(3) NOT NULL,
-                                                 npc_id BIGINT UNSIGNED NOT NULL,
-                                                 x_coord MEDIUMINT UNSIGNED NOT NULL,
-                                                 y_coord MEDIUMINT UNSIGNED NOT NULL,
-                                                 plane TINYINT UNSIGNED NOT NULL,
+                                                 username VARCHAR(50) NOT NULL,
+                                                 x_coord MEDIUMINT NOT NULL,
+                                                 y_coord MEDIUMINT NOT NULL,
+                                                 plane TINYINT NOT NULL,
                                                  world SMALLINT UNSIGNED NOT NULL,
-                                                 PRIMARY KEY (id)
+                                                 npc_id INT UNSIGNED NOT NULL,
+                                                 count INT UNSIGNED NOT NULL DEFAULT 0,
+                                                 PRIMARY KEY (username, x_coord, y_coord, plane, world, npc_id)
                                              )
                                              """);
 
@@ -123,27 +122,39 @@ public class Database {
                                              """);
     }
 
-    synchronized void insertKill(String username, LocalDateTime dateTime, int npcId, WorldPoint location, int world) {
-        String sql = "INSERT INTO " + tableNameKills +
-                " (username, update_time, npc_id, x_coord, y_coord, plane, world) " +
-                "VALUES (?, ?, ?, ?, ?, ?, ?)";
+    @SneakyThrows
+    synchronized void insertKill(String username, int npcId, WorldPoint location, int world) {
+        ResultSet resultSet;
 
-        establishConnection(false);
-
-        try (PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+        try (PreparedStatement preparedStatement = connection.prepareStatement(
+                "SELECT * FROM kills" +
+                " WHERE username = ? AND x_coord = ? AND y_coord = ? AND plane = ? AND world = ? AND npc_id = ?",
+                ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_UPDATABLE)) {
             int index = 0;
 
             preparedStatement.setString(++index, username);
-            preparedStatement.setTimestamp(++index, Timestamp.valueOf(dateTime));
-            preparedStatement.setInt(++index, npcId);
             preparedStatement.setInt(++index, location.getX());
             preparedStatement.setInt(++index, location.getY());
             preparedStatement.setInt(++index, location.getPlane());
             preparedStatement.setInt(++index, world);
+            preparedStatement.setInt(++index, npcId);
 
-            preparedStatement.executeUpdate();
-        } catch (SQLException e) {
-            log.error("SQL Error", e);
+            resultSet = preparedStatement.executeQuery();
+        }
+
+        if (resultSet.next()) {
+            resultSet.updateInt("count", resultSet.getInt("count") + 1);
+            resultSet.updateRow();
+        } else {
+            resultSet.moveToInsertRow();
+
+            resultSet.updateString("username", username);
+            resultSet.updateInt("x_coord", location.getX());
+            resultSet.updateInt("y_coord", location.getY());
+            resultSet.updateInt("plane", location.getPlane());
+            resultSet.updateInt("world", world);
+            resultSet.updateInt("npc_id", npcId);
+            resultSet.updateInt("count", 1);
         }
     }
 
@@ -282,9 +293,7 @@ public class Database {
                     ? new WorldPoint(getModifiedX(xCoord), getModifiedY(yCoord), plane)
                     : new WorldPoint(xCoord, yCoord, plane);
             int npcId = results.getInt("npc_id");
-            int count = 1 + ((outerMap.get(point) != null && outerMap.get(point).get(npcId) != null)
-                    ? outerMap.get(point).get(npcId)
-                    : 0);
+            int count = results.getInt("count");
             HashMap<Integer, Integer> innerMap = new HashMap<>();
 
             innerMap.put(npcId, count);

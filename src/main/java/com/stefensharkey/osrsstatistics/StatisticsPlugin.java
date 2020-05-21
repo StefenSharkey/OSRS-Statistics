@@ -172,7 +172,7 @@ public class StatisticsPlugin extends Plugin {
                 int world = client.getWorld();
 
                 new Thread(() -> {
-                    database.insertKill(player.getName(), lastUpdatedKill, npc.getId(), location, world);
+                    database.insertKill(player.getName(), npc.getId(), location, world);
                     lastUpdatedKill = now();
                 }).start();
             }
