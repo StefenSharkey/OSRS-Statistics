@@ -1,5 +1,6 @@
 package com.stefensharkey.osrsstatistics;
 
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Actor;
 import net.runelite.api.Client;
@@ -18,7 +19,6 @@ import java.awt.Point;
 import java.awt.Polygon;
 import java.awt.Shape;
 import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.time.LocalDateTime;
 
 @Slf4j
@@ -52,11 +52,7 @@ public class StatisticsNpcOverlay extends Overlay {
 
     @Override
     public Dimension render(Graphics2D graphics) {
-        if (config.isNpcTooltipEnabled()) {
-            if (client.isMenuOpen()) {
-                return null;
-            }
-
+        if (config.isNpcTooltipEnabled() && !client.isMenuOpen()) {
             updateMaps();
 
             Point mouseCanvasPoint =
@@ -76,46 +72,31 @@ public class StatisticsNpcOverlay extends Overlay {
         return null;
     }
 
+    @SneakyThrows
     private void renderTooltip(NPC npc) {
-        try {
-            StringBuilder tooltip = new StringBuilder();
-            String npcName = npc.getName();
-            int npcLevel = npc.getCombatLevel();
-            int numKills = 0;
+        StringBuilder tooltip = new StringBuilder();
+        int numKills = 0;
 
-            while (kills.next()) {
-                String name = loot.getString("npc_name");
-                int level = loot.getInt("npc_level");
-
-                if (npcName != null && npcName.equals(name) && npcLevel == level) {
-                    numKills++;
-                }
-            }
-
-            tooltip.append("Kills: ").append(numKills).append("</br></br>Loot:</br>");
-
-            while (loot.next()) {
-                String name = loot.getString("npc_name");
-                int level = loot.getInt("npc_level");
-
-                if (npcName != null && npcName.equals(name) && npcLevel == level) {
-                    int id = loot.getInt("item_id");
-                    int quantity = loot.getInt("quantity");
-
-                    tooltip.append(itemManager.getItemComposition(id).getName())
-                            .append(" (").append(quantity)
-                            .append(")</br>");
-                }
-            }
-
-            loot.beforeFirst();
-
-            if (tooltip.length() > 0) {
-                tooltipManager.add(new Tooltip(tooltip.toString()));
-            }
-        } catch (SQLException e) {
-            log.error("SQL Error", e);
+        // Determine the number of kills.
+        while (kills.next() && kills.getInt("npc_id") == npc.getId()) {
+            numKills++;
         }
+
+        tooltip.append("Kills: ").append(numKills).append("</br></br>Loot:</br>");
+
+        // Determine the loot names and quantities.
+        while (loot.next() && loot.getInt("npc_id") == npc.getId()) {
+            tooltip.append(itemManager.getItemComposition(loot.getInt("item_id")).getName())
+                    .append(" (")
+                    .append(loot.getInt("quantity"))
+                    .append(")</br>");
+        }
+
+        // Reset cursors for next iteration.
+        kills.beforeFirst();
+        loot.beforeFirst();
+
+        tooltipManager.add(new Tooltip(tooltip.toString()));
     }
 
     private void updateMaps() {

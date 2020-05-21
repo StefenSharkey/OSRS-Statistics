@@ -102,11 +102,10 @@ public class Database {
                                                  id INT NOT NULL AUTO_INCREMENT,
                                                  username VARCHAR(320) NOT NULL,
                                                  update_time DATETIME(3) NOT NULL,
-                                                 npc_name VARCHAR(255) NOT NULL,
-                                                 npc_level MEDIUMINT UNSIGNED NOT NULL,
-                                                 x_coord MEDIUMINT NOT NULL,
-                                                 y_coord MEDIUMINT NOT NULL,
-                                                 plane TINYINT NOT NULL,
+                                                 npc_id BIGINT UNSIGNED NOT NULL,
+                                                 x_coord MEDIUMINT UNSIGNED NOT NULL,
+                                                 y_coord MEDIUMINT UNSIGNED NOT NULL,
+                                                 plane TINYINT UNSIGNED NOT NULL,
                                                  world SMALLINT UNSIGNED NOT NULL,
                                                  PRIMARY KEY (id)
                                              )
@@ -117,19 +116,18 @@ public class Database {
                                              """
                                              (
                                                  username VARCHAR(320) NOT NULL,
-                                                 npc_name VARCHAR(255) NOT NULL,
-                                                 npc_level MEDIUMINT UNSIGNED NOT NULL,
-                                                 item_id INT NOT NULL,
+                                                 npc_id BIGINT UNSIGNED NOT NULL,
+                                                 item_id INT UNSIGNED NOT NULL,
                                                  quantity INT UNSIGNED NOT NULL,
-                                                 PRIMARY KEY (username, npc_name, npc_level, item_id)
+                                                 PRIMARY KEY (username, npc_id, item_id)
                                              )
                                              """);
     }
 
-    synchronized void insertKill(String username, LocalDateTime dateTime, Actor npc, WorldPoint location, int world) {
+    synchronized void insertKill(String username, LocalDateTime dateTime, int npcId, WorldPoint location, int world) {
         String sql = "INSERT INTO " + tableNameKills +
-                " (username, update_time, npc_name, npc_level, x_coord, y_coord, plane, world) " +
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+                " (username, update_time, npc_id, x_coord, y_coord, plane, world) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?)";
 
         establishConnection(false);
 
@@ -138,8 +136,7 @@ public class Database {
 
             preparedStatement.setString(++index, username);
             preparedStatement.setTimestamp(++index, Timestamp.valueOf(dateTime));
-            preparedStatement.setString(++index, npc.getName());
-            preparedStatement.setInt(++index, npc.getCombatLevel());
+            preparedStatement.setInt(++index, npcId);
             preparedStatement.setInt(++index, location.getX());
             preparedStatement.setInt(++index, location.getY());
             preparedStatement.setInt(++index, location.getPlane());
@@ -174,21 +171,18 @@ public class Database {
         }
     }
 
-    synchronized void insertLoot(String username, Actor npc, ItemStack itemStack) {
-        String npcName = npc.getName();
-        int npcLevel = npc.getCombatLevel();
+    synchronized void insertLoot(String username, int npcId, ItemStack itemStack) {
         ResultSet resultSet;
 
         establishConnection(false);
 
         try {
             try (PreparedStatement selectStatement = connection.prepareStatement(
-                    "SELECT * FROM " + tableNameLoot + " WHERE username = ? AND npc_name = ? AND npc_level = ? AND item_id = ?")) {
+                    "SELECT * FROM " + tableNameLoot + " WHERE username = ? AND npc_id = ? AND item_id = ?")) {
                 int index = 0;
 
                 selectStatement.setString(++index, username);
-                selectStatement.setString(++index, npcName);
-                selectStatement.setInt(++index, npcLevel);
+                selectStatement.setInt(++index, npcId);
                 selectStatement.setInt(++index, itemStack.getId());
 
                 resultSet = selectStatement.executeQuery();
@@ -196,20 +190,18 @@ public class Database {
 
             boolean exists = resultSet.next();
             try (PreparedStatement updateStatement = connection.prepareStatement(exists
-                    ? "UPDATE " + tableNameLoot + " SET quantity = ? WHERE username = ? AND npc_name = ? AND npc_level = ? AND item_id = ?"
-                    : "INSERT INTO " + tableNameLoot + " VALUES (?, ?, ?, ?, ?)")) {
+                    ? "UPDATE " + tableNameLoot + " SET quantity = ? WHERE username = ? AND npc_id = ? AND item_id = ?"
+                    : "INSERT INTO " + tableNameLoot + " VALUES (?, ?, ?, ?)")) {
                 int index = 0;
 
                 if (exists) {
                     updateStatement.setInt(++index, itemStack.getQuantity() + resultSet.getInt("quantity"));
                     updateStatement.setString(++index, username);
-                    updateStatement.setString(++index, npcName);
-                    updateStatement.setInt(++index, npcLevel);
+                    updateStatement.setInt(++index, npcId);
                     updateStatement.setInt(++index, itemStack.getId());
                 } else {
                     updateStatement.setString(++index, username);
-                    updateStatement.setString(++index, npcName);
-                    updateStatement.setInt(++index, npcLevel);
+                    updateStatement.setInt(++index, npcId);
                     updateStatement.setInt(++index, itemStack.getId());
                     updateStatement.setInt(++index, itemStack.getQuantity());
                 }
@@ -246,9 +238,9 @@ public class Database {
     }
 
     @SneakyThrows
-    Map<WorldPoint, HashMap<String, Integer>> retrieveKillMap(String username, boolean modifiedPoints) {
+    Map<WorldPoint, HashMap<Integer, Integer>> retrieveKillMap(String username, boolean modifiedPoints) {
         ResultSet results = retrieveKill(username);
-        Map<WorldPoint, HashMap<String, Integer>> outerMap = new LinkedHashMap<>();
+        Map<WorldPoint, HashMap<Integer, Integer>> outerMap = new LinkedHashMap<>();
 
         while (results.next()) {
             int xCoord = results.getInt("x_coord");
@@ -257,13 +249,13 @@ public class Database {
             WorldPoint point = modifiedPoints
                     ? new WorldPoint(getModifiedX(xCoord), getModifiedY(yCoord), plane)
                     : new WorldPoint(xCoord, yCoord, plane);
-            String npcName = results.getString("npc_name");
-            int count = 1 + ((outerMap.get(point) != null && outerMap.get(point).get(npcName) != null)
-                    ? outerMap.get(point).get(npcName)
+            int npcId = results.getInt("npc_id");
+            int count = 1 + ((outerMap.get(point) != null && outerMap.get(point).get(npcId) != null)
+                    ? outerMap.get(point).get(npcId)
                     : 0);
-            HashMap<String, Integer> innerMap = new HashMap<>();
+            HashMap<Integer, Integer> innerMap = new HashMap<>();
 
-            innerMap.put(npcName, count);
+            innerMap.put(npcId, count);
             outerMap.put(point, innerMap);
         }
 

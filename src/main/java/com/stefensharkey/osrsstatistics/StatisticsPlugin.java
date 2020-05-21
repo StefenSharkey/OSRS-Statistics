@@ -42,6 +42,8 @@ import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.events.NpcLootReceived;
 import net.runelite.client.game.ItemManager;
+import net.runelite.client.game.ItemStack;
+import net.runelite.client.game.NPCManager;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.ui.overlay.OverlayManager;
@@ -65,6 +67,9 @@ public class StatisticsPlugin extends Plugin {
 
     @Inject
     private ItemManager itemManager;
+
+    @Inject
+    private NPCManager npcManager;
 
     @Inject
     private StatisticsConfig config;
@@ -164,14 +169,14 @@ public class StatisticsPlugin extends Plugin {
 
             if (player != null) {
                 WorldPoint location = player.getWorldLocation();
-                lastUpdatedKill = now();
 
                 // Required for the thread; otherwise, the insertion becomes invalid, as the NPC is reset.
                 int world = client.getWorld();
 
-                new Thread(() ->
-                        database.insertKill(player.getName(), lastUpdatedKill, npc, location, world)
-                ).start();
+                new Thread(() -> {
+                    database.insertKill(player.getName(), lastUpdatedKill, npc.getId(), location, world);
+                    lastUpdatedKill = now();
+                }).start();
             }
         }
     }
@@ -182,11 +187,14 @@ public class StatisticsPlugin extends Plugin {
 
         if (player != null) {
             NPC npc = npcLootReceived.getNpc();
-            lastUpdatedLoot = now();
 
-            npcLootReceived.getItems().forEach(itemStack ->
-                    database.insertLoot(player.getName(), npc, itemStack)
-            );
+            new Thread(() -> {
+                lastUpdatedLoot = now();
+
+                for (ItemStack itemStack : npcLootReceived.getItems()) {
+                    database.insertLoot(player.getName(), npc.getId(), itemStack);
+                }
+            }).start();
         }
     }
 

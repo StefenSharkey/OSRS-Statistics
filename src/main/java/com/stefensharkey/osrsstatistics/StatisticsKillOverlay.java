@@ -29,7 +29,7 @@ public class StatisticsKillOverlay extends Overlay {
     private final TooltipManager tooltipManager;
     private final Database database;
 
-    private Map<WorldPoint, HashMap<String, Integer>> killCountMap;
+    private Map<WorldPoint, HashMap<Integer, Integer>> killCountMap;
     private LocalDateTime lastUpdated;
 
     @Inject
