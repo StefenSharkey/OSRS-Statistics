@@ -78,16 +78,16 @@ public class HeatMap implements Runnable {
             float[] dist = {0.0F, 1.0F};
             Color[] colors = {new Color(255, 0, 0, 255), new Color(255, 0, 0, 0)};
 
-            data.forEach((point, xpValue) -> {
-                // Instead of flipping the image vertically to account for origin differences, we subtract the point's
-                // vertical coordinate from the image's height.
+            // Instead of flipping the image vertically to account for origin differences, we subtract the point's
+            // vertical coordinate from the image's height.
+            for (WorldPoint point : data.keySet()) {
                 drawGradientCircle(
                         graphics,
                         new Point(point.getX(), map.getHeight() - point.getY()),
                         config.heatMapDotSize(),
                         dist,
                         colors);
-            });
+            }
 
             graphics.dispose();
 

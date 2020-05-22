@@ -296,8 +296,9 @@ public class Database {
                 int yCoord = resultSet.getInt("y_coord");
                 int plane = resultSet.getInt("plane");
 
-                point = new WorldPoint(modifiedPoints ? getModifiedX(xCoord) : xCoord,
-                        modifiedPoints ? getModifiedY(yCoord) : yCoord, plane);
+                point = modifiedPoints
+                        ? new WorldPoint(getModifiedX(xCoord), getModifiedY(yCoord), plane)
+                        : new WorldPoint(xCoord, yCoord, plane);
 
                 EnumMap<Skill, Integer[]> skillXpMap = new EnumMap<>(Skill.class);
 
@@ -316,21 +317,19 @@ public class Database {
     }
 
     private int getModifiedX (int x) {
-        return (x - 1152) * 4;
+        return (x - 1152) << 2;
     }
 
     private int getModifiedY (int y) {
-        return (y - 1216) * 4;
+        return (y - 1216) << 2;
     }
 
-
-    @SuppressWarnings("HardcodedFileSeparator")
     @SneakyThrows
     synchronized void updateConfig(StatisticsConfig config) {
         dataSource = switch (config.databaseType()) {
             case SQLITE -> {
                 SQLiteDataSource tmpDataSource = new SQLiteDataSource();
-                tmpDataSource.setUrl("jdbc:sqlite:" + Path.of(RuneLite.RUNELITE_DIR.getAbsolutePath(), "heatmap").toString());
+                tmpDataSource.setUrl("jdbc:sqlite:" + Path.of(RuneLite.RUNELITE_DIR.getAbsolutePath(), "heatmap"));
                 tmpDataSource.setDatabaseName(config.databaseName());
 
                 yield tmpDataSource;

@@ -146,7 +146,7 @@ public class StatisticsXpOverlay extends Overlay {
         }
     }
 
-    public void renderTiles(Graphics2D graphics) {
+    private void renderTiles(Graphics2D graphics) {
         if (xpMap != null) {
             int max = 0;
 

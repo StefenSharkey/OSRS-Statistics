@@ -111,7 +111,7 @@ public class StatisticsKillOverlay extends Overlay {
         }
     }
 
-    public void renderTiles(Graphics2D graphics) {
+    private void renderTiles(Graphics2D graphics) {
         if (killCountMap != null) {
             int max = 0;
 
