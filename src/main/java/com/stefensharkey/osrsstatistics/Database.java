@@ -28,7 +28,6 @@ import com.mysql.jdbc.jdbc2.optional.MysqlDataSource;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Actor;
-import net.runelite.api.Client;
 import net.runelite.api.Skill;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.RuneLite;
@@ -285,15 +284,15 @@ public class Database {
     }
 
     @SneakyThrows
-    Map<WorldPoint, EnumMap<Skill, Integer[]>> retrieveXpMap(Client client) {
+    Map<WorldPoint, EnumMap<Skill, Integer[]>> retrieveXpMap(Actor player) {
         ResultSet resultSet;
 
         try (PreparedStatement preparedStatement = connection.prepareStatement("SELECT * FROM " + tableNameXp +
                              " WHERE username = ? AND x_coord >= ? AND x_coord <= ? AND y_coord >= ? AND y_coord <= ? AND plane = ?")) {
             int index = 0;
-            WorldPoint point = client.getLocalPlayer().getWorldLocation();
+            WorldPoint point = player.getWorldLocation();
 
-            preparedStatement.setString(++index, client.getLocalPlayer().getName());
+            preparedStatement.setString(++index, player.getName());
             preparedStatement.setInt(++index, point.getX() - 45);
             preparedStatement.setInt(++index, point.getX() + 45);
             preparedStatement.setInt(++index, point.getY() - 45);
