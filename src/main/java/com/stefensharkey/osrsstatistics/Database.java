@@ -250,24 +250,38 @@ public class Database {
     }
 
     @SneakyThrows
-    Map<WorldPoint, HashMap<Integer, Integer>> retrieveKillMap(String username) {
-        ResultSet results = retrieveKill(username);
-        Map<WorldPoint, HashMap<Integer, Integer>> outerMap = new LinkedHashMap<>();
+    Map<WorldPoint, HashMap<Integer, Integer>> retrieveKillMap(Actor player) {
+        try (PreparedStatement preparedStatement = connection.prepareStatement("SELECT * FROM " + tableNameKills +
+                             " WHERE username = ? AND x_coord >= ? AND x_coord <= ? AND y_coord >= ? AND y_coord <= ? AND plane = ?")) {
+            int index = 0;
+            WorldPoint point = player.getWorldLocation();
 
-        while (results.next()) {
-            int xCoord = results.getInt("x_coord");
-            int yCoord = results.getInt("y_coord");
-            int plane = results.getInt("plane");
-            WorldPoint point = new WorldPoint(xCoord, yCoord, plane);
-            int npcId = results.getInt("npc_id");
-            int count = results.getInt("count");
-            HashMap<Integer, Integer> innerMap = new HashMap<>();
+            preparedStatement.setString(++index, player.getName());
+            preparedStatement.setInt(++index, point.getX() - 45);
+            preparedStatement.setInt(++index, point.getX() + 45);
+            preparedStatement.setInt(++index, point.getY() - 45);
+            preparedStatement.setInt(++index, point.getY() + 45);
+            preparedStatement.setInt(++index, point.getPlane());
 
-            innerMap.put(npcId, count);
-            outerMap.put(point, innerMap);
+            ResultSet resultSet = preparedStatement.executeQuery();
+
+            Map<WorldPoint, HashMap<Integer, Integer>> outerMap = new LinkedHashMap<>();
+
+            while (resultSet.next()) {
+                int xCoord = resultSet.getInt("x_coord");
+                int yCoord = resultSet.getInt("y_coord");
+                int plane = resultSet.getInt("plane");
+                point = new WorldPoint(xCoord, yCoord, plane);
+                int npcId = resultSet.getInt("npc_id");
+                int count = resultSet.getInt("count");
+                HashMap<Integer, Integer> innerMap = new HashMap<>();
+
+                innerMap.put(npcId, count);
+                outerMap.put(point, innerMap);
+            }
+
+            return outerMap;
         }
-
-        return outerMap;
     }
 
     @SneakyThrows
