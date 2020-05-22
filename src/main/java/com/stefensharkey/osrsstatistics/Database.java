@@ -155,6 +155,8 @@ public class Database {
             resultSet.updateInt("world", world);
             resultSet.updateInt("npc_id", npcId);
             resultSet.updateInt("count", 1);
+
+            resultSet.insertRow();
         }
     }
 
