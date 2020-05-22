@@ -250,7 +250,7 @@ public class Database {
     }
 
     @SneakyThrows
-    Map<WorldPoint, HashMap<Integer, Integer>> retrieveKillMap(String username, boolean modifiedPoints) {
+    Map<WorldPoint, HashMap<Integer, Integer>> retrieveKillMap(String username) {
         ResultSet results = retrieveKill(username);
         Map<WorldPoint, HashMap<Integer, Integer>> outerMap = new LinkedHashMap<>();
 
@@ -258,9 +258,7 @@ public class Database {
             int xCoord = results.getInt("x_coord");
             int yCoord = results.getInt("y_coord");
             int plane = results.getInt("plane");
-            WorldPoint point = modifiedPoints
-                    ? new WorldPoint(getModifiedX(xCoord), getModifiedY(yCoord), plane)
-                    : new WorldPoint(xCoord, yCoord, plane);
+            WorldPoint point = new WorldPoint(xCoord, yCoord, plane);
             int npcId = results.getInt("npc_id");
             int count = results.getInt("count");
             HashMap<Integer, Integer> innerMap = new HashMap<>();
@@ -273,7 +271,7 @@ public class Database {
     }
 
     @SneakyThrows
-    Map<WorldPoint, EnumMap<Skill, Integer[]>> retrieveXpMap(Client client, boolean modifiedPoints) {
+    Map<WorldPoint, EnumMap<Skill, Integer[]>> retrieveXpMap(Client client) {
         ResultSet resultSet;
 
         try (PreparedStatement preparedStatement = connection.prepareStatement("SELECT * FROM " + tableNameXp +
@@ -296,9 +294,7 @@ public class Database {
                 int yCoord = resultSet.getInt("y_coord");
                 int plane = resultSet.getInt("plane");
 
-                point = modifiedPoints
-                        ? new WorldPoint(getModifiedX(xCoord), getModifiedY(yCoord), plane)
-                        : new WorldPoint(xCoord, yCoord, plane);
+                point = new WorldPoint(xCoord, yCoord, plane);
 
                 EnumMap<Skill, Integer[]> skillXpMap = new EnumMap<>(Skill.class);
 
@@ -314,14 +310,6 @@ public class Database {
 
             return map;
         }
-    }
-
-    private int getModifiedX (int x) {
-        return (x - 1152) << 2;
-    }
-
-    private int getModifiedY (int y) {
-        return (y - 1216) << 2;
     }
 
     @SneakyThrows

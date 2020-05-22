@@ -193,7 +193,7 @@ public class StatisticsXpOverlay extends Overlay {
         if (player != null && (lastUpdated == null || lastUpdated.isBefore(plugin.lastUpdatedXp))) {
             lastUpdated = plugin.lastUpdatedXp;
 
-            xpMap = database.retrieveXpMap(client, false);
+            xpMap = database.retrieveXpMap(client);
         }
     }
 }

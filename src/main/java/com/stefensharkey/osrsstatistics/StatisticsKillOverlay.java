@@ -156,7 +156,7 @@ public class StatisticsKillOverlay extends Overlay {
         // local kill map and make note of it.
         if (player != null && (lastUpdated == null || lastUpdated.isBefore(plugin.lastUpdatedKill))) {
             lastUpdated = plugin.lastUpdatedKill;
-            killCountMap = database.retrieveKillMap(client.getUsername(), false);
+            killCountMap = database.retrieveKillMap(client.getUsername());
         }
     }
 }
