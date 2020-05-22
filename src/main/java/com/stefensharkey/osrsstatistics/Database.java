@@ -42,14 +42,12 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Timestamp;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 
 @Slf4j
@@ -70,7 +68,7 @@ public class Database {
     private synchronized void createDatabase() {
         establishConnection(false);
 
-        List<String> skills = new ArrayList<>((Skill.values().length - 1) << 1);
+        Collection<String> skills = new ArrayList<>((Skill.values().length - 1) << 1);
         for (Skill skill : Arrays.copyOf(Skill.values(), Skill.values().length - 1)) {
             String s = skill.getName().toLowerCase();
             skills.add(s);
@@ -79,20 +77,20 @@ public class Database {
 
         // XP Table
         connection.createStatement().execute("CREATE TABLE IF NOT EXISTS " + tableNameXp +
-                """
-                (
-                    username VARCHAR(50) NOT NULL,
-                    x_coord MEDIUMINT UNSIGNED NOT NULL,
-                    y_coord MEDIUMINT UNSIGNED NOT NULL,
-                    plane TINYINT UNSIGNED NOT NULL,
-                    world SMALLINT UNSIGNED NOT NULL,
-                """ +
-                String.join(" INT UNSIGNED NOT NULL DEFAULT 0, ", skills) +
-                " INT UNSIGNED NOT NULL DEFAULT 0, " +
-                """
-                    PRIMARY KEY (username, x_coord, y_coord, plane, world)
-                )
-                """);
+                                             """
+                                             (
+                                                 username VARCHAR(50) NOT NULL,
+                                                 x_coord MEDIUMINT UNSIGNED NOT NULL,
+                                                 y_coord MEDIUMINT UNSIGNED NOT NULL,
+                                                 plane TINYINT UNSIGNED NOT NULL,
+                                                 world SMALLINT UNSIGNED NOT NULL,
+                                             """ +
+                                             String.join(" INT UNSIGNED NOT NULL DEFAULT 0, ", skills) +
+                                             " INT UNSIGNED NOT NULL DEFAULT 0, " +
+                                             """
+                                                 PRIMARY KEY (username, x_coord, y_coord, plane, world)
+                                             )
+                                             """);
 
         // Kill Table
         connection.createStatement().execute("CREATE TABLE IF NOT EXISTS " + tableNameKills +

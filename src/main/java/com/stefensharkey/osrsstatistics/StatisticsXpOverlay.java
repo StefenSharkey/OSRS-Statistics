@@ -112,7 +112,7 @@ public class StatisticsXpOverlay extends Overlay {
                         .append("</br>");
 
                 for (Map.Entry<WorldPoint, EnumMap<Skill, Integer[]>> entry : xpMap.entrySet()) {
-                    EnumMap<Skill, Integer[]> skillEnumMap = entry.getValue();
+                    Map<Skill, Integer[]> skillEnumMap = entry.getValue();
 
                     int max = 0;
 
@@ -150,7 +150,7 @@ public class StatisticsXpOverlay extends Overlay {
         if (xpMap != null) {
             int max = 0;
 
-            for (EnumMap<Skill, Integer[]> entry : xpMap.values()) {
+            for (Map<Skill, Integer[]> entry : xpMap.values()) {
                 for (Integer[] entry1 : entry.values()) {
                     if (entry1[tileIndex] > max) {
                         max = entry1[tileIndex];
@@ -160,7 +160,7 @@ public class StatisticsXpOverlay extends Overlay {
 
             for (Map.Entry<WorldPoint, EnumMap<Skill, Integer[]>> entry : xpMap.entrySet()) {
                 WorldPoint point = entry.getKey();
-                EnumMap<Skill, Integer[]> value = entry.getValue();
+                Map<Skill, Integer[]> value = entry.getValue();
 
                 LocalPoint tileLocation = LocalPoint.fromWorld(client, point.getX(), point.getY());
 
@@ -171,7 +171,7 @@ public class StatisticsXpOverlay extends Overlay {
         }
     }
 
-    private void renderTile(Graphics2D graphics, LocalPoint tileLocation, EnumMap<Skill, Integer[]> tileValue, int max) {
+    private void renderTile(Graphics2D graphics, LocalPoint tileLocation, Map<Skill, Integer[]> tileValue, int max) {
         Polygon polygon = Perspective.getCanvasTilePoly(client, tileLocation);
 
         if (polygon != null) {

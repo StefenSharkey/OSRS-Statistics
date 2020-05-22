@@ -5,7 +5,6 @@ import net.runelite.api.Actor;
 import net.runelite.api.Client;
 import net.runelite.api.Perspective;
 import net.runelite.api.Player;
-import net.runelite.api.Skill;
 import net.runelite.api.Tile;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
@@ -22,7 +21,6 @@ import java.awt.Dimension;
 import java.awt.Graphics2D;
 import java.awt.Polygon;
 import java.time.LocalDateTime;
-import java.util.AbstractMap;
 import java.util.HashMap;
 import java.util.Map;
 

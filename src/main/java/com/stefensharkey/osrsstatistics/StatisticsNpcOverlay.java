@@ -58,15 +58,15 @@ public class StatisticsNpcOverlay extends Overlay {
             Point mouseCanvasPoint =
                     new Point(client.getMouseCanvasPosition().getX(), client.getMouseCanvasPosition().getY());
 
-            client.getNpcs().forEach(npc -> {
+            for (NPC npc : client.getNpcs()) {
                 Polygon npcTilePoly = npc.getCanvasTilePoly();
                 Shape npcHull = npc.getConvexHull();
 
                 if ((npcHull != null && npcHull.contains(mouseCanvasPoint))
-                        || (npcTilePoly != null && npcTilePoly.contains(mouseCanvasPoint))) {
+                    || (npcTilePoly != null && npcTilePoly.contains(mouseCanvasPoint))) {
                     renderTooltip(npc);
                 }
-            });
+            }
         }
 
         return null;
