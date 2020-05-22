@@ -27,8 +27,8 @@ package com.stefensharkey.osrsstatistics;
 import com.mysql.jdbc.jdbc2.optional.MysqlDataSource;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import net.runelite.api.Actor;
 import net.runelite.api.Client;
-import net.runelite.api.Player;
 import net.runelite.api.Skill;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.RuneLite;
@@ -161,13 +161,14 @@ public class Database {
     }
 
     @SneakyThrows
-    synchronized void insertXp(Player player, Skill skill, int delta, int world) {
+    synchronized void insertXp(Actor player, Skill skill, int delta, int world) {
         String name = player.getName();
         WorldPoint location = player.getWorldLocation();
         String selectSql = "SELECT * FROM " + tableNameXp + " WHERE username = ? AND x_coord = ? AND y_coord = ? AND plane = ?";
         ResultSet resultSet;
 
-        try (PreparedStatement preparedStatement = connection.prepareStatement(selectSql)) {
+        try (PreparedStatement preparedStatement = connection.prepareStatement(selectSql,
+                ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_UPDATABLE)) {
             int index = 0;
 
             preparedStatement.setString(++index, name);
@@ -179,86 +180,54 @@ public class Database {
         }
 
         if (resultSet.next()) {
-            String updateSql = "UPDATE " + tableNameXp + " SET " + skill.getName().toLowerCase() + " = ?, " +
-                    skill.getName().toLowerCase() + "_num = ?" +
-                    " WHERE username = ? AND x_coord = ? AND y_coord = ? AND plane = ?";
-
-            establishConnection(false);
-
-            try (PreparedStatement preparedStatement = connection.prepareStatement(updateSql)) {
-                int index = 0;
-
-                preparedStatement.setInt(++index, delta + resultSet.getInt(skill.getName()));
-                preparedStatement.setInt(++index, resultSet.getInt(skill.getName() + "_num") + 1);
-                preparedStatement.setString(++index, name);
-                preparedStatement.setInt(++index, location.getX());
-                preparedStatement.setInt(++index, location.getY());
-                preparedStatement.setInt(++index, location.getPlane());
-
-                preparedStatement.executeUpdate();
-            }
+            resultSet.updateInt(skill.getName().toLowerCase(), resultSet.getInt(skill.getName()) + delta);
+            resultSet.updateInt(skill.getName().toLowerCase() + "_num", resultSet.getInt(skill.getName() + "_num") + 1);
+            resultSet.updateRow();
         } else {
-            String insertSql = "INSERT INTO " + tableNameXp +
-                    " (username, x_coord, y_coord, plane, world, " + skill.getName().toLowerCase() + ", " +
-                    skill.getName().toLowerCase() + "_num) " + "VALUES (?, ?, ?, ?, ?, ?, ?)";
+            resultSet.moveToInsertRow();
 
-            establishConnection(false);
+            resultSet.updateString("username", name);
+            resultSet.updateInt("x_coord", location.getX());
+            resultSet.updateInt("y_coord", location.getY());
+            resultSet.updateInt("plane", location.getPlane());
+            resultSet.updateInt("world", world);
+            resultSet.updateInt(skill.getName().toLowerCase(), delta);
+            resultSet.updateInt(skill.getName().toLowerCase() + "_num", 1);
 
-            try (PreparedStatement preparedStatement = connection.prepareStatement(insertSql)) {
-                int index = 0;
-
-                preparedStatement.setString(++index, name);
-                preparedStatement.setInt(++index, location.getX());
-                preparedStatement.setInt(++index, location.getY());
-                preparedStatement.setInt(++index, location.getPlane());
-                preparedStatement.setInt(++index, world);
-                preparedStatement.setInt(++index, delta);
-                preparedStatement.setInt(++index, 1);
-
-                preparedStatement.executeUpdate();
-            }
+            resultSet.insertRow();
         }
     }
 
+    @SneakyThrows
     synchronized void insertLoot(String username, int npcId, ItemStack itemStack) {
         ResultSet resultSet;
 
         establishConnection(false);
 
-        try {
-            try (PreparedStatement selectStatement = connection.prepareStatement(
-                    "SELECT * FROM " + tableNameLoot + " WHERE username = ? AND npc_id = ? AND item_id = ?")) {
-                int index = 0;
+        try (PreparedStatement selectStatement = connection.prepareStatement(
+                "SELECT * FROM " + tableNameLoot + " WHERE username = ? AND npc_id = ? AND item_id = ?",
+                ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_UPDATABLE)) {
+            int index = 0;
 
-                selectStatement.setString(++index, username);
-                selectStatement.setInt(++index, npcId);
-                selectStatement.setInt(++index, itemStack.getId());
+            selectStatement.setString(++index, username);
+            selectStatement.setInt(++index, npcId);
+            selectStatement.setInt(++index, itemStack.getId());
 
-                resultSet = selectStatement.executeQuery();
-            }
+            resultSet = selectStatement.executeQuery();
+        }
 
-            boolean exists = resultSet.next();
-            try (PreparedStatement updateStatement = connection.prepareStatement(exists
-                    ? "UPDATE " + tableNameLoot + " SET quantity = ? WHERE username = ? AND npc_id = ? AND item_id = ?"
-                    : "INSERT INTO " + tableNameLoot + " VALUES (?, ?, ?, ?)")) {
-                int index = 0;
+        if (resultSet.next()) {
+            resultSet.updateInt("quantity", resultSet.getInt("quantity") + itemStack.getQuantity());
+            resultSet.updateRow();
+        } else {
+            resultSet.moveToInsertRow();
 
-                if (exists) {
-                    updateStatement.setInt(++index, itemStack.getQuantity() + resultSet.getInt("quantity"));
-                    updateStatement.setString(++index, username);
-                    updateStatement.setInt(++index, npcId);
-                    updateStatement.setInt(++index, itemStack.getId());
-                } else {
-                    updateStatement.setString(++index, username);
-                    updateStatement.setInt(++index, npcId);
-                    updateStatement.setInt(++index, itemStack.getId());
-                    updateStatement.setInt(++index, itemStack.getQuantity());
-                }
+            resultSet.updateString("username", username);
+            resultSet.updateInt("npc_id", npcId);
+            resultSet.updateInt("item_id", itemStack.getId());
+            resultSet.updateInt("quantity", itemStack.getQuantity());
 
-                updateStatement.executeUpdate();
-            }
-        } catch (SQLException e) {
-            log.error("SQL Error", e);
+            resultSet.insertRow();
         }
     }
 
