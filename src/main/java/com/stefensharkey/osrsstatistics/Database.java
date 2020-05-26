@@ -35,7 +35,6 @@ import net.runelite.client.game.ItemStack;
 import org.mariadb.jdbc.MariaDbDataSource;
 import org.sqlite.SQLiteDataSource;
 
-import javax.sql.DataSource;
 import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -52,7 +51,6 @@ import java.util.Map;
 @Slf4j
 public class Database {
 
-    private DataSource dataSource;
     private Connection connection;
 
     private String tableNameKills;
@@ -65,8 +63,6 @@ public class Database {
 
     @SneakyThrows
     private synchronized void createDatabase() {
-        establishConnection(false);
-
         Collection<String> skills = new ArrayList<>((Skill.values().length - 1) << 1);
         for (Skill skill : Arrays.copyOf(Skill.values(), Skill.values().length - 1)) {
             String s = skill.getName().toLowerCase();
@@ -199,8 +195,6 @@ public class Database {
     synchronized void insertLoot(String username, int npcId, ItemStack itemStack) {
         ResultSet resultSet;
 
-        establishConnection(false);
-
         try (PreparedStatement selectStatement = connection.prepareStatement(
                 "SELECT * FROM " + tableNameLoot + " WHERE username = ? AND npc_id = ? AND item_id = ?",
                 ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_UPDATABLE)) {
@@ -327,7 +321,11 @@ public class Database {
 
     @SneakyThrows
     synchronized void updateConfig(StatisticsConfig config) {
-        dataSource = switch (config.databaseType()) {
+        if (connection != null) {
+            connection.close();
+        }
+
+        connection = (switch (config.databaseType()) {
             case SQLITE -> {
                 SQLiteDataSource tmpDataSource = new SQLiteDataSource();
                 tmpDataSource.setUrl("jdbc:sqlite:" + Path.of(RuneLite.RUNELITE_DIR.getAbsolutePath(), "heatmap"));
@@ -353,36 +351,13 @@ public class Database {
 
                 yield tmpDataSource;
             }
-        };
-
-        establishConnection(true);
+        }).getConnection();
 
         tableNameKills = config.databaseTablePrefix() + "kills";
         tableNameLoot = config.databaseTablePrefix() + "loot";
         tableNameXp = config.databaseTablePrefix() + "experience";
 
         createDatabase();
-    }
-
-    @SneakyThrows
-    private void establishConnection(boolean shouldForce) {
-        if (shouldForce) {
-            connection = dataSource.getConnection();
-        } else {
-            boolean shouldOpen = false;
-
-            try {
-                if (connection.isClosed()) {
-                    shouldOpen = true;
-                }
-            } catch (SQLException e) {
-                shouldOpen = true;
-            }
-
-            if (shouldOpen) {
-                connection = dataSource.getConnection();
-            }
-        }
     }
 
     public enum DatabaseType {
