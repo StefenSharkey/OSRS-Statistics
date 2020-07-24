@@ -80,14 +80,9 @@ public class StatisticsKillOverlay extends Overlay {
                         .append("</br>");
 
                 for (Map.Entry<WorldPoint, Map<Integer, Integer>> entry : killCountMap.entrySet()) {
-                    Map<Integer, Integer> npcHashMap = entry.getValue();
-                    int max = Collections.max(npcHashMap.values());
-
-                        for (int value : npcHashMap.values()) {
-                            if (value > max) {
-                                max = value;
-                            }
-                        }
+                    if (Utilities.worldPointEquals(entry.getKey(), worldPoint)) {
+                        Map<Integer, Integer> npcHashMap = entry.getValue();
+                        int max = Collections.max(npcHashMap.values());
 
                         for (Map.Entry<Integer, Integer> entry1 : npcHashMap.entrySet()) {
                             int count = entry1.getValue();

@@ -28,7 +28,6 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Actor;
 import net.runelite.api.Client;
 import net.runelite.api.Perspective;
-import net.runelite.api.Player;
 import net.runelite.api.Skill;
 import net.runelite.api.Tile;
 import net.runelite.api.coords.LocalPoint;
@@ -106,14 +105,14 @@ public class StatisticsXpOverlay extends Overlay {
                         .append("</br>");
 
                 for (Map.Entry<WorldPoint, EnumMap<Skill, Integer[]>> entry : xpMap.entrySet()) {
-                    Map<Skill, Integer[]> skillEnumMap = entry.getValue();
-                    int max = Integer.MIN_VALUE;
+                    if (Utilities.worldPointEquals(entry.getKey(), worldPoint)) {
+                        Map<Skill, Integer[]> skillEnumMap = entry.getValue();
+                        int max = Integer.MIN_VALUE;
 
-                    for (Integer[] tileValues : skillEnumMap.values()) {
-                        max = Math.max(tileValues[tooltipIndex], max);
-                    }
+                        for (Integer[] tileValues : skillEnumMap.values()) {
+                            max = Math.max(tileValues[tooltipIndex], max);
+                        }
 
-                    if (WorldPointHelper.equals(entry.getKey(), worldPoint)) {
                         for (Map.Entry<Skill, Integer[]> entry1 : skillEnumMap.entrySet()) {
                             Integer[] experience = entry1.getValue();
 
