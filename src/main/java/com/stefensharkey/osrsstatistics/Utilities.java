@@ -10,18 +10,18 @@ import java.awt.Color;
 @UtilityClass
 public class Utilities {
 
-    public Color getHeatMapColor(float value) {
-        float[][] colors = { { 0, 0, 1 }, { 0, 1, 0 }, { 1, 1, 0 }, { 1, 0, 0 } };
+    public static Color getHeatMapColor(float value) {
+        float[][] colors = {{0.0F, 0.0F, 1.0F}, {0.0F, 1.0F, 0.0F}, {1.0F, 1.0F, 0.0F}, {1.0F, 0.0F, 0.0F}};
         int numColors = colors.length - 1;
 
         int index1 = 0;
         int index2 = 0;
-        float fractionBetween = 0;
+        float fractionBetween = 0.0F;
 
-        if (value >= 1) {
+        if (Float.compare(value, 1.0F) >= 0) {
             index1 = numColors;
             index2 = numColors;
-        } else if (value > 0) {
+        } else if (Float.compare(value, 0.0F) > 0) {
             value *= numColors;
             index1 = (int) Math.floor(value);
             index2 = index1 + 1;
