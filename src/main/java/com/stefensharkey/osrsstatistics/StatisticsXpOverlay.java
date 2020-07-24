@@ -107,13 +107,10 @@ public class StatisticsXpOverlay extends Overlay {
 
                 for (Map.Entry<WorldPoint, EnumMap<Skill, Integer[]>> entry : xpMap.entrySet()) {
                     Map<Skill, Integer[]> skillEnumMap = entry.getValue();
-
-                    int max = 0;
+                    int max = Integer.MIN_VALUE;
 
                     for (Integer[] tileValues : skillEnumMap.values()) {
-                        if (tileValues[tooltipIndex] > max) {
-                            max = tileValues[tooltipIndex];
-                        }
+                        max = Math.max(tileValues[tooltipIndex], max);
                     }
 
                     if (WorldPointHelper.equals(entry.getKey(), worldPoint)) {
@@ -142,13 +139,11 @@ public class StatisticsXpOverlay extends Overlay {
 
     private void renderTiles(Graphics2D graphics) {
         if (xpMap != null) {
-            int max = 0;
+            int max = Integer.MIN_VALUE;
 
             for (Map<Skill, Integer[]> entry : xpMap.values()) {
                 for (Integer[] entry1 : entry.values()) {
-                    if (entry1[tileIndex] > max) {
-                        max = entry1[tileIndex];
-                    }
+                    max = Math.max(entry1[tileIndex],  max);
                 }
             }
 

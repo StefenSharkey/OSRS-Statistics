@@ -21,7 +21,7 @@ import java.awt.Dimension;
 import java.awt.Graphics2D;
 import java.awt.Polygon;
 import java.time.LocalDateTime;
-import java.util.HashMap;
+import java.util.Collections;
 import java.util.Map;
 
 @Slf4j
@@ -79,11 +79,9 @@ public class StatisticsKillOverlay extends Overlay {
                         .append(", Plane: ").append(worldPoint.getPlane())
                         .append("</br>");
 
-                for (Map.Entry<WorldPoint, HashMap<Integer, Integer>> entry : killCountMap.entrySet()) {
+                for (Map.Entry<WorldPoint, Map<Integer, Integer>> entry : killCountMap.entrySet()) {
                     Map<Integer, Integer> npcHashMap = entry.getValue();
-
-                    if (WorldPointHelper.equals(entry.getKey(), worldPoint)) {
-                        int max = 0;
+                    int max = Collections.max(npcHashMap.values());
 
                         for (int value : npcHashMap.values()) {
                             if (value > max) {
@@ -111,13 +109,11 @@ public class StatisticsKillOverlay extends Overlay {
 
     private void renderTiles(Graphics2D graphics) {
         if (killCountMap != null) {
-            int max = 0;
+            int max = Integer.MIN_VALUE;
 
             for (Map<Integer, Integer> entry : killCountMap.values()) {
                 for (int entry1 : entry.values()) {
-                    if (entry1 > max) {
-                        max = entry1;
-                    }
+                    max = Math.max(entry1, max);
                 }
             }
 
