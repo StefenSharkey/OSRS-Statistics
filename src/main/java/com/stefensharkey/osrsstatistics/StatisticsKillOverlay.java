@@ -57,8 +57,6 @@ public class StatisticsKillOverlay extends Overlay {
             }
         }
 
-        }
-
         return null;
     }
 
