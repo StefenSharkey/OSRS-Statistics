@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Actor;
 import net.runelite.api.Client;
 import net.runelite.api.NPC;
+import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.ui.overlay.Overlay;
 import net.runelite.client.ui.overlay.OverlayLayer;
@@ -15,10 +16,6 @@ import net.runelite.client.ui.overlay.tooltip.TooltipManager;
 import javax.inject.Inject;
 import java.awt.Dimension;
 import java.awt.Graphics2D;
-import java.awt.Point;
-import java.awt.Polygon;
-import java.awt.Shape;
-import java.sql.ResultSet;
 import java.time.LocalDateTime;
 import java.util.Map;
 
@@ -51,21 +48,9 @@ public class StatisticsNpcOverlay extends Overlay {
 
     @Override
     public Dimension render(Graphics2D graphics) {
-        if (config.isNpcTooltipEnabled() && !client.isMenuOpen()) {
+        if (config.isNpcTooltipEnabled() && !client.isMenuOpen() && plugin.hoveredNpc != null) {
             updateMaps();
-
-            Point mouseCanvasPoint =
-                    new Point(client.getMouseCanvasPosition().getX(), client.getMouseCanvasPosition().getY());
-
-            for (NPC npc : client.getNpcs()) {
-                Polygon npcTilePoly = npc.getCanvasTilePoly();
-                Shape npcHull = npc.getConvexHull();
-
-                if ((npcHull != null && npcHull.contains(mouseCanvasPoint))
-                    || (npcTilePoly != null && npcTilePoly.contains(mouseCanvasPoint))) {
-                    renderTooltip(npc);
-                }
-            }
+            renderTooltip(plugin.hoveredNpc);
         }
 
         return null;

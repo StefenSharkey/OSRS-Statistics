@@ -28,11 +28,12 @@ import com.google.inject.Provides;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
+import net.runelite.api.MenuAction;
 import net.runelite.api.NPC;
 import net.runelite.api.Player;
 import net.runelite.api.Skill;
-import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.GameStateChanged;
+import net.runelite.api.events.MenuEntryAdded;
 import net.runelite.api.events.NpcDespawned;
 import net.runelite.api.events.StatChanged;
 import net.runelite.client.config.ConfigManager;
@@ -45,6 +46,7 @@ import net.runelite.client.game.NPCManager;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.ui.overlay.OverlayManager;
+import org.apache.commons.lang3.ArrayUtils;
 
 import javax.inject.Inject;
 import java.time.LocalDateTime;
@@ -88,6 +90,16 @@ public class StatisticsPlugin extends Plugin {
     LocalDateTime lastUpdatedKill;
     LocalDateTime lastUpdatedLoot;
     LocalDateTime lastUpdatedXp;
+
+    private static final int[] NPC_MENU_ACTIONS = {
+            MenuAction.NPC_FIRST_OPTION.getId(),
+            MenuAction.NPC_SECOND_OPTION.getId(),
+            MenuAction.NPC_THIRD_OPTION.getId(),
+            MenuAction.NPC_FOURTH_OPTION.getId(),
+            MenuAction.NPC_FIFTH_OPTION.getId()
+    };
+
+    NPC hoveredNpc;
 
     @Override
     protected void startUp() {
@@ -188,6 +200,22 @@ public class StatisticsPlugin extends Plugin {
                  "databasepassword",
                  "databasename",
                  "databasetableprefix" -> database.updateConfig(config);
+        }
+    }
+
+    @Subscribe
+    public void onMenuEntryAdded(MenuEntryAdded event) {
+        if (ArrayUtils.contains(NPC_MENU_ACTIONS, event.getType())) {
+            NPC[] npcs = client.getCachedNPCs();
+            int index = event.getIdentifier();
+
+            if (index < npcs.length) {
+                hoveredNpc = npcs[index];
+            } else {
+                hoveredNpc = null;
+            }
+        } else {
+            hoveredNpc = null;
         }
     }
 
