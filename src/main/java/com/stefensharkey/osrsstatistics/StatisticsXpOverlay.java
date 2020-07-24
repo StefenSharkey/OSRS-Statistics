@@ -131,6 +131,7 @@ public class StatisticsXpOverlay extends Overlay {
                     }
                 }
 
+                // Display tooltip, cutting off the final line break.
                 tooltipManager.add(new Tooltip(tooltip.substring(0, tooltip.lastIndexOf("</br>"))));
             }
         }

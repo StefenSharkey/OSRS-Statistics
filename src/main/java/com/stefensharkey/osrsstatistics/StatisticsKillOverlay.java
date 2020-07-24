@@ -91,7 +91,8 @@ public class StatisticsKillOverlay extends Overlay {
                     }
                 }
 
-                tooltipManager.add(new Tooltip(tooltip.substring(0, tooltip.lastIndexOf("</br>"))));
+                // Display tooltip, cutting off the final line break.
+                tooltipManager.add(new Tooltip(tooltip.substring(0, tooltip.length() - 4)));
             }
         }
     }

@@ -73,7 +73,7 @@ public class StatisticsNpcOverlay extends Overlay {
 
     @SneakyThrows
     private void renderTooltip(NPC npc) {
-        StringBuilder tooltip = new StringBuilder();
+        StringBuilder tooltip = new StringBuilder("Kills");
         int numKills = 0;
 
         // Determine the number of kills.
@@ -81,7 +81,7 @@ public class StatisticsNpcOverlay extends Overlay {
             numKills += npcEntry.getOrDefault(npc.getId(), 0);
         }
 
-        tooltip.append("Kills: ").append(numKills).append("</br></br>Loot:</br>");
+        tooltip.append(numKills).append("</br></br>Loot:</br>");
 
         // Determine the loot names and quantities.
         for (Map.Entry<Integer, Map<Integer, Integer>> npcEntry : loot.entrySet()) {
