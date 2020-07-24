@@ -83,7 +83,7 @@ public class StatisticsPlugin extends Plugin {
 
     private final LinkedHashMap<Skill, Integer> skillXpCache = new LinkedHashMap<>();
 
-    private Database database;
+    Database database;
 
     LocalDateTime lastUpdatedKill;
     LocalDateTime lastUpdatedLoot;
@@ -124,20 +124,15 @@ public class StatisticsPlugin extends Plugin {
                 // Occasionally, this method will be fired undesirably. To counteract this, only proceed if there is
                 // actually an XP change.
                 if (skillXpCache.get(skill) != xp) {
-                    Player player = client.getLocalPlayer();
+                    int delta = xp - skillXpCache.get(skill);
 
-                    // Sanity check for player nullability.
-                    if (player != null) {
-                        int delta = xp - skillXpCache.get(skill);
+                    // Insert into the database within a thread so
+                    skillXpCache.put(skill, xp);
 
-                        // Insert into the database within a thread so
-                        skillXpCache.put(skill, xp);
-
-                        new Thread(() -> {
-                            database.insertXp(player, skill, delta, client.getWorld());
-                            lastUpdatedXp = now();
-                        }).start();
-                    }
+                    new Thread(() -> {
+                        database.insertXp(client, skill.getName(), delta);
+                        lastUpdatedXp = now();
+                    }).start();
                 }
             }
         }
@@ -161,19 +156,10 @@ public class StatisticsPlugin extends Plugin {
         NPC npc = npcDespawned.getNpc();
 
         if (npc.isDead()) {
-            Player player = client.getLocalPlayer();
-
-            if (player != null) {
-                WorldPoint location = player.getWorldLocation();
-
-                // Required for the thread; otherwise, the insertion becomes invalid, as the NPC is reset.
-                int world = client.getWorld();
-
-                new Thread(() -> {
-                    database.insertKill(player.getName(), npc.getId(), location, world);
-                    lastUpdatedKill = now();
-                }).start();
-            }
+            new Thread(() -> {
+                database.insertKill(client, npc.getId());
+                lastUpdatedKill = now();
+            }).start();
         }
     }
 

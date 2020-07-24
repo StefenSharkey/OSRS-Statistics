@@ -31,9 +31,8 @@ public class StatisticsKillOverlay extends Overlay {
     private final StatisticsPlugin plugin;
     private final StatisticsConfig config;
     private final TooltipManager tooltipManager;
-    private final Database database;
 
-    private Map<WorldPoint, HashMap<Integer, Integer>> killCountMap;
+    private Map<WorldPoint, Map<Integer, Integer>> killCountMap;
     private LocalDateTime lastUpdated;
 
     @Inject
@@ -44,7 +43,6 @@ public class StatisticsKillOverlay extends Overlay {
         this.plugin = plugin;
         this.config = config;
         this.tooltipManager = tooltipManager;
-        database = new Database(config);
         updateMaps();
     }
 
@@ -123,7 +121,7 @@ public class StatisticsKillOverlay extends Overlay {
                 }
             }
 
-            for (Map.Entry<WorldPoint, HashMap<Integer, Integer>> entry : killCountMap.entrySet()) {
+            for (Map.Entry<WorldPoint, Map<Integer, Integer>> entry : killCountMap.entrySet()) {
                 WorldPoint point = entry.getKey();
                 Map<Integer, Integer> value = entry.getValue();
                 LocalPoint tileLocation = LocalPoint.fromWorld(client, point.getX(), point.getY());
@@ -156,7 +154,7 @@ public class StatisticsKillOverlay extends Overlay {
         // local kill map and make note of it.
         if (player != null && (lastUpdated == null || lastUpdated.isBefore(plugin.lastUpdatedKill))) {
             lastUpdated = plugin.lastUpdatedKill;
-            killCountMap = database.retrieveKillMap(player);
+            killCountMap = plugin.database.retrieveKillMap(player, true);
         }
     }
 }

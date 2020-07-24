@@ -28,6 +28,8 @@ import com.mysql.cj.jdbc.MysqlDataSource;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Actor;
+import net.runelite.api.Client;
+import net.runelite.api.Player;
 import net.runelite.api.Skill;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.RuneLite;
@@ -116,11 +118,16 @@ public class Database {
     }
 
     @SneakyThrows
-    synchronized void insertKill(String username, int npcId, WorldPoint location, int world) {
+    synchronized void insertKill(Client client, int npcId) {
+        Player player = client.getLocalPlayer();
+        String username = player.getName();
+        WorldPoint location = player.getWorldLocation();
+        int world = client.getWorld();
+
         ResultSet resultSet;
 
         try (PreparedStatement preparedStatement = connection.prepareStatement(
-                "SELECT * FROM kills" +
+                "SELECT * FROM " + tableNameKills +
                 " WHERE username = ? AND x_coord = ? AND y_coord = ? AND plane = ? AND world = ? AND npc_id = ?",
                 ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_UPDATABLE)) {
             int index = 0;
@@ -154,7 +161,8 @@ public class Database {
     }
 
     @SneakyThrows
-    synchronized void insertXp(Actor player, Skill skill, int delta, int world) {
+    synchronized void insertXp(Client client, String skillName, int delta) {
+        Player player = client.getLocalPlayer();
         String name = player.getName();
         WorldPoint location = player.getWorldLocation();
         String selectSql = "SELECT * FROM " + tableNameXp + " WHERE username = ? AND x_coord = ? AND y_coord = ? AND plane = ?";
@@ -173,8 +181,8 @@ public class Database {
         }
 
         if (resultSet.next()) {
-            resultSet.updateInt(skill.getName().toLowerCase(), resultSet.getInt(skill.getName()) + delta);
-            resultSet.updateInt(skill.getName().toLowerCase() + "_num", resultSet.getInt(skill.getName() + "_num") + 1);
+            resultSet.updateInt(skillName.toLowerCase(), resultSet.getInt(skillName) + delta);
+            resultSet.updateInt(skillName.toLowerCase() + "_num", resultSet.getInt(skillName + "_num") + 1);
             resultSet.updateRow();
         } else {
             resultSet.moveToInsertRow();
@@ -183,9 +191,9 @@ public class Database {
             resultSet.updateInt("x_coord", location.getX());
             resultSet.updateInt("y_coord", location.getY());
             resultSet.updateInt("plane", location.getPlane());
-            resultSet.updateInt("world", world);
-            resultSet.updateInt(skill.getName().toLowerCase(), delta);
-            resultSet.updateInt(skill.getName().toLowerCase() + "_num", 1);
+            resultSet.updateInt("world", client.getWorld());
+            resultSet.updateInt(skillName.toLowerCase(), delta);
+            resultSet.updateInt(skillName.toLowerCase() + "_num", 1);
 
             resultSet.insertRow();
         }
@@ -222,29 +230,72 @@ public class Database {
         }
     }
 
-    ResultSet retrieveKill(String username) {
-        return retrieve(tableNameKills, username);
-    }
+    @SneakyThrows
+    Map<WorldPoint, Map<Integer, Integer>> retrieveKillMap(Actor player, boolean nearby) {
+        try (PreparedStatement preparedStatement = connection.prepareStatement(
+                "SELECT * FROM " + tableNameKills + " WHERE username = ? AND plane = ?" +
+                (nearby ? " AND x_coord >= ? AND x_coord <= ? AND y_coord >= ? AND y_coord <= ?"
+                        : ""))) {
+            int index = 0;
+            WorldPoint point = player.getWorldLocation();
 
-    ResultSet retrieveLoot(String username) {
-        return retrieve(tableNameLoot, username);
-    }
+            preparedStatement.setString(++index, player.getName());
+            preparedStatement.setInt(++index, point.getPlane());
 
-    private synchronized ResultSet retrieve(String tableName, String username) {
-        try (PreparedStatement preparedStatement =
-                     connection.prepareStatement("SELECT * FROM " + tableName + " WHERE username = ?")) {
-            preparedStatement.setString(1, username);
-            return preparedStatement.executeQuery();
-        } catch (SQLException e) {
-            log.error("SQL Error", e);
+            if (nearby) {
+                preparedStatement.setInt(++index, point.getX() - 45);
+                preparedStatement.setInt(++index, point.getX() + 45);
+                preparedStatement.setInt(++index, point.getY() - 45);
+                preparedStatement.setInt(++index, point.getY() + 45);
+            }
+
+            ResultSet resultSet = preparedStatement.executeQuery();
+
+            Map<WorldPoint, Map<Integer, Integer>> outerMap = new HashMap<>();
+
+            while (resultSet.next()) {
+                int xCoord = resultSet.getInt("x_coord");
+                int yCoord = resultSet.getInt("y_coord");
+                int plane = resultSet.getInt("plane");
+                point = new WorldPoint(xCoord, yCoord, plane);
+                int npcId = resultSet.getInt("npc_id");
+                int count = resultSet.getInt("count");
+                Map<Integer, Integer> innerMap = new HashMap<>();
+
+                innerMap.put(npcId, count);
+                outerMap.put(point, innerMap);
+            }
+
+            return outerMap;
         }
-
-        return null;
     }
 
     @SneakyThrows
-    Map<WorldPoint, HashMap<Integer, Integer>> retrieveKillMap(Actor player) {
-        try (PreparedStatement preparedStatement = connection.prepareStatement("SELECT * FROM " + tableNameKills +
+    Map<Integer, Map<Integer, Integer>> retrieveLootMap(String username) {
+        try (PreparedStatement preparedStatement = connection.prepareStatement("SELECT * FROM " + tableNameLoot + " WHERE username = ?")) {
+            preparedStatement.setString(1, username);
+            ResultSet resultSet = preparedStatement.executeQuery();
+
+            Map<Integer, Map<Integer, Integer>> map = new HashMap<>();
+
+            while (resultSet.next()) {
+                int npcId = resultSet.getInt("npc_id");
+                int itemId = resultSet.getInt("item_id");
+                int quantity = resultSet.getInt("quantity");
+
+                Map<Integer, Integer> innerMap = new HashMap<>();
+
+                innerMap.put(itemId, quantity);
+                map.put(npcId, innerMap);
+            }
+
+            return map;
+        }
+    }
+
+    @SneakyThrows
+    Map<WorldPoint, EnumMap<Skill, Integer[]>> retrieveXpMap(Actor player) {
+        try (PreparedStatement preparedStatement = connection.prepareStatement("SELECT * FROM " + tableNameXp +
                              " WHERE username = ? AND x_coord >= ? AND x_coord <= ? AND y_coord >= ? AND y_coord <= ? AND plane = ?")) {
             int index = 0;
             WorldPoint point = player.getWorldLocation();
@@ -258,43 +309,7 @@ public class Database {
 
             ResultSet resultSet = preparedStatement.executeQuery();
 
-            Map<WorldPoint, HashMap<Integer, Integer>> outerMap = new LinkedHashMap<>();
-
-            while (resultSet.next()) {
-                int xCoord = resultSet.getInt("x_coord");
-                int yCoord = resultSet.getInt("y_coord");
-                int plane = resultSet.getInt("plane");
-                point = new WorldPoint(xCoord, yCoord, plane);
-                int npcId = resultSet.getInt("npc_id");
-                int count = resultSet.getInt("count");
-                HashMap<Integer, Integer> innerMap = new HashMap<>();
-
-                innerMap.put(npcId, count);
-                outerMap.put(point, innerMap);
-            }
-
-            return outerMap;
-        }
-    }
-
-    @SneakyThrows
-    Map<WorldPoint, EnumMap<Skill, Integer[]>> retrieveXpMap(Actor player) {
-        ResultSet resultSet;
-
-        try (PreparedStatement preparedStatement = connection.prepareStatement("SELECT * FROM " + tableNameXp +
-                             " WHERE username = ? AND x_coord >= ? AND x_coord <= ? AND y_coord >= ? AND y_coord <= ? AND plane = ?")) {
-            int index = 0;
-            WorldPoint point = player.getWorldLocation();
-
-            preparedStatement.setString(++index, player.getName());
-            preparedStatement.setInt(++index, point.getX() - 45);
-            preparedStatement.setInt(++index, point.getX() + 45);
-            preparedStatement.setInt(++index, point.getY() - 45);
-            preparedStatement.setInt(++index, point.getY() + 45);
-            preparedStatement.setInt(++index, point.getPlane());
-            resultSet = preparedStatement.executeQuery();
-
-            Map<WorldPoint, EnumMap<Skill, Integer[]>> map = new LinkedHashMap<>();
+            Map<WorldPoint, EnumMap<Skill, Integer[]>> map = new HashMap<>();
 
             while (resultSet.next()) {
                 int xCoord = resultSet.getInt("x_coord");
@@ -305,10 +320,11 @@ public class Database {
 
                 EnumMap<Skill, Integer[]> skillXpMap = new EnumMap<>(Skill.class);
 
+                // For every skill except for Skill.OVERALL, fill the inner map with XP data from resultSet.
                 for (int x = 0; x < Skill.values().length - 1; x++) {
                     String skillName = Skill.values()[x].getName();
 
-                    skillXpMap.put(Skill.valueOf(skillName.replace("_num", "").toUpperCase()),
+                    skillXpMap.put(Skill.values()[x],
                             new Integer[] {resultSet.getInt(skillName), resultSet.getInt(skillName + "_num")});
                 }
 

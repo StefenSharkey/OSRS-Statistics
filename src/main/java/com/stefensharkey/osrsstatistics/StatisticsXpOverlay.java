@@ -56,7 +56,6 @@ public class StatisticsXpOverlay extends Overlay {
     private final StatisticsPlugin plugin;
     private final StatisticsConfig config;
     private final TooltipManager tooltipManager;
-    private final Database database;
 
     private Map<WorldPoint, EnumMap<Skill, Integer[]>> xpMap;
     private int tileIndex;
@@ -72,7 +71,6 @@ public class StatisticsXpOverlay extends Overlay {
         this.plugin = plugin;
         this.config = config;
         this.tooltipManager = tooltipManager;
-        database = new Database(config);
         updateMaps();
     }
 
@@ -81,17 +79,13 @@ public class StatisticsXpOverlay extends Overlay {
         if (config.isXpOverlayEnabled()) {
             updateMaps();
 
-            Player player = client.getLocalPlayer();
+            tileIndex = config.shouldXpOverlayShowTotal() ? 0 : 1;
+            tooltipIndex = config.shouldXpTooltipHighlightTotal() ? 0 : 1;
 
-            if (player != null) {
-                tileIndex = config.shouldXpOverlayShowTotal() ? 0 : 1;
-                tooltipIndex = config.shouldXpTooltipHighlightTotal() ? 0 : 1;
+            renderTiles(graphics);
 
-                renderTiles(graphics);
-
-                if (config.isXpTooltipEnabled()) {
-                    renderTooltip();
-                }
+            if (config.isXpTooltipEnabled()) {
+                renderTooltip();
             }
         }
 
@@ -193,7 +187,7 @@ public class StatisticsXpOverlay extends Overlay {
         if (player != null && (lastUpdated == null || lastUpdated.isBefore(plugin.lastUpdatedXp))) {
             lastUpdated = plugin.lastUpdatedXp;
 
-            xpMap = database.retrieveXpMap(player);
+            xpMap = plugin.database.retrieveXpMap(player);
         }
     }
 }
