@@ -196,7 +196,7 @@ public class StatisticsPlugin extends Plugin {
         return configManager.getConfig(StatisticsConfig.class);
     }
 
-    public LocalDateTime now() {
-        return LocalDateTime.now(ZoneId.of("America/New_York"));
+    private static LocalDateTime now() {
+        return LocalDateTime.now(ZoneId.systemDefault());
     }
 }
