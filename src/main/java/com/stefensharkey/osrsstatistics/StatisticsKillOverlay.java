@@ -4,7 +4,6 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Actor;
 import net.runelite.api.Client;
 import net.runelite.api.Perspective;
-import net.runelite.api.Player;
 import net.runelite.api.Tile;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
@@ -51,15 +50,12 @@ public class StatisticsKillOverlay extends Overlay {
         if (config.isKillOverlayEnabled()) {
             updateMaps();
 
-            Player player = client.getLocalPlayer();
+            renderTiles(graphics);
 
-            if (player != null) {
-                renderTiles(graphics);
-
-                if (config.isKillTooltipEnabled()) {
-                    renderTooltip();
-                }
+            if (config.isKillTooltipEnabled()) {
+                renderTooltip();
             }
+        }
 
         }
 
