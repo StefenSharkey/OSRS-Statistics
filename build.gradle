@@ -53,9 +53,8 @@ dependencies {
 
 group = 'com.stefensharkey.osrsstatistics'
 version = '1.0-SNAPSHOT'
-sourceCompatibility = '14'
+sourceCompatibility = '16'
 
 tasks.withType(JavaCompile) {
     options.encoding = 'UTF-8'
-//    options.compilerArgs.addAll('--enable-preview')
 }
