@@ -37,6 +37,7 @@ import net.runelite.client.game.ItemStack;
 import org.mariadb.jdbc.MariaDbDataSource;
 import org.sqlite.SQLiteDataSource;
 
+import javax.sql.DataSource;
 import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -341,7 +342,7 @@ public class Database {
             connection.close();
         }
 
-        connection = (switch (config.databaseType()) {
+        DataSource dataSource = (switch (config.databaseType()) {
             case SQLITE -> {
                 SQLiteDataSource tmpDataSource = new SQLiteDataSource();
                 tmpDataSource.setUrl("jdbc:sqlite:" + Path.of(RuneLite.RUNELITE_DIR.getAbsolutePath(), "heatmap"));
@@ -367,7 +368,9 @@ public class Database {
 
                 yield tmpDataSource;
             }
-        }).getConnection();
+        });
+
+        connection = dataSource.getConnection();
 
         tableNameKills = config.databaseTablePrefix() + "kills";
         tableNameLoot = config.databaseTablePrefix() + "loot";
