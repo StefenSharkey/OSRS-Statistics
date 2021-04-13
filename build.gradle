@@ -24,6 +24,7 @@
  */
 plugins {
     id 'java'
+    id "io.freefair.lombok" version "6.0.0-m2"
 }
 
 repositories {
@@ -34,19 +35,16 @@ repositories {
     mavenCentral()
 }
 
-def runeLiteVersion = '1.6.23'
+def runeLiteVersion = '1.7.4'
 
 dependencies {
     compileOnly group: 'net.runelite', name:'client', version: runeLiteVersion
 
-    compileOnly group: 'org.projectlombok', name: 'lombok', version: '1.18.12'
-    annotationProcessor group: 'org.projectlombok', name: 'lombok', version: '1.18.12'
+    implementation group: 'org.xerial', name: 'sqlite-jdbc', version: '3.34.0'
+    implementation group: 'mysql', name: 'mysql-connector-java', version: '8.0.23'
+    implementation group: 'org.mariadb.jdbc', name: 'mariadb-java-client', version: '2.7.2'
 
-    implementation group: 'org.xerial', name: 'sqlite-jdbc', version: '3.31.1'
-    implementation group: 'mysql', name: 'mysql-connector-java', version: '8.0.20'
-    implementation group: 'org.mariadb.jdbc', name: 'mariadb-java-client', version: '2.6.0'
-
-    testImplementation group: 'org.junit.jupiter', name: 'junit-jupiter-api', version: '5.7.0-M1'
+    testImplementation group: 'org.junit.jupiter', name: 'junit-jupiter-api', version: '5.8.0-M1'
     testImplementation group: 'org.slf4j', name: 'slf4j-simple', version: '2.0.0-alpha1'
     testImplementation group: 'net.runelite', name: 'client', version: runeLiteVersion, {
         exclude group: 'ch.qos.logback', module: 'logback-classic'
@@ -59,5 +57,5 @@ sourceCompatibility = '14'
 
 tasks.withType(JavaCompile) {
     options.encoding = 'UTF-8'
-    options.compilerArgs.addAll('--enable-preview')
+//    options.compilerArgs.addAll('--enable-preview')
 }
