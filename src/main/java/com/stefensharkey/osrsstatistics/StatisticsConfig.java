@@ -49,7 +49,7 @@ public interface StatisticsConfig extends Config {
             position = 1
     )
     default String databaseServerIp() {
-            return "67.246.243.177";
+            return "stefensharkey.com";
     }
 
     @ConfigItem(
