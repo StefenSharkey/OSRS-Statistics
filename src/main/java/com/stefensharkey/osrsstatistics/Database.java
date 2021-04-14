@@ -48,7 +48,6 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.EnumMap;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.Map;
 
 @Slf4j
@@ -125,23 +124,10 @@ public class Database {
         WorldPoint location = player.getWorldLocation();
         int world = client.getWorld();
 
-        ResultSet resultSet;
-
-        try (PreparedStatement preparedStatement = connection.prepareStatement(
-                "SELECT * FROM " + tableNameKills +
-                " WHERE username = ? AND x_coord = ? AND y_coord = ? AND plane = ? AND world = ? AND npc_id = ?",
-                ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_UPDATABLE)) {
-            int index = 0;
-
-            preparedStatement.setString(++index, username);
-            preparedStatement.setInt(++index, location.getX());
-            preparedStatement.setInt(++index, location.getY());
-            preparedStatement.setInt(++index, location.getPlane());
-            preparedStatement.setInt(++index, world);
-            preparedStatement.setInt(++index, npcId);
-
-            resultSet = preparedStatement.executeQuery();
-        }
+        String sqlString = "SELECT * FROM " + tableNameKills +
+                           " WHERE username = ? AND x_coord = ? AND y_coord = ? AND plane = ? AND world = ? AND npc_id = ?";
+        Object[] args = {username, location.getX(), location.getY(), location.getPlane(), world, npcId};
+        ResultSet resultSet = executePreparedStatement(sqlString, args);
 
         if (resultSet.next()) {
             resultSet.updateInt("count", resultSet.getInt("count") + 1);
@@ -166,20 +152,10 @@ public class Database {
         Player player = client.getLocalPlayer();
         String name = player.getName();
         WorldPoint location = player.getWorldLocation();
-        String selectSql = "SELECT * FROM " + tableNameXp + " WHERE username = ? AND x_coord = ? AND y_coord = ? AND plane = ?";
-        ResultSet resultSet;
 
-        try (PreparedStatement preparedStatement = connection.prepareStatement(selectSql,
-                ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_UPDATABLE)) {
-            int index = 0;
-
-            preparedStatement.setString(++index, name);
-            preparedStatement.setInt(++index, location.getX());
-            preparedStatement.setInt(++index, location.getY());
-            preparedStatement.setInt(++index, location.getPlane());
-
-            resultSet = preparedStatement.executeQuery();
-        }
+        String sqlString = "SELECT * FROM " + tableNameXp + " WHERE username = ? AND x_coord = ? AND y_coord = ? AND plane = ?";
+        Object[] args = {name, location.getX(), location.getY(), location.getPlane()};
+        ResultSet resultSet = executePreparedStatement(sqlString, args);
 
         if (resultSet.next()) {
             resultSet.updateInt(skillName.toLowerCase(), resultSet.getInt(skillName) + delta);
@@ -202,19 +178,9 @@ public class Database {
 
     @SneakyThrows
     synchronized void insertLoot(String username, int npcId, ItemStack itemStack) {
-        ResultSet resultSet;
-
-        try (PreparedStatement selectStatement = connection.prepareStatement(
-                "SELECT * FROM " + tableNameLoot + " WHERE username = ? AND npc_id = ? AND item_id = ?",
-                ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_UPDATABLE)) {
-            int index = 0;
-
-            selectStatement.setString(++index, username);
-            selectStatement.setInt(++index, npcId);
-            selectStatement.setInt(++index, itemStack.getId());
-
-            resultSet = selectStatement.executeQuery();
-        }
+        String sqlString = "SELECT * FROM " + tableNameLoot + " WHERE username = ? AND npc_id = ? AND item_id = ?";
+        Object[] args = {username, npcId, itemStack.getId()};
+        ResultSet resultSet = executePreparedStatement(sqlString, args);
 
         if (resultSet.next()) {
             resultSet.updateInt("quantity", resultSet.getInt("quantity") + itemStack.getQuantity());
@@ -233,106 +199,104 @@ public class Database {
 
     @SneakyThrows
     Map<WorldPoint, Map<Integer, Integer>> retrieveKillMap(Actor player, boolean nearby) {
-        try (PreparedStatement preparedStatement = connection.prepareStatement(
-                "SELECT * FROM " + tableNameKills + " WHERE username = ? AND plane = ?" +
-                (nearby ? " AND x_coord >= ? AND x_coord <= ? AND y_coord >= ? AND y_coord <= ?"
-                        : ""))) {
-            int index = 0;
-            WorldPoint point = player.getWorldLocation();
+        WorldPoint point = player.getWorldLocation();
 
-            preparedStatement.setString(++index, player.getName());
-            preparedStatement.setInt(++index, point.getPlane());
+        String sqlString = "SELECT * FROM " + tableNameKills + " WHERE username = ? AND plane = ?" +
+                           (nearby ? " AND x_coord >= ? AND x_coord <= ? AND y_coord >= ? AND y_coord <= ?"
+                                   : "");
+        Object[] args = nearby
+                        ? new Object[]{player.getName(), point.getPlane()}
+                        : new Object[]{player.getName(), point.getPlane(), point.getX() - 45, point.getX() + 45, point.getY() - 45, point.getY() + 45};
+        ResultSet resultSet = executePreparedStatement(sqlString, args);
 
-            if (nearby) {
-                preparedStatement.setInt(++index, point.getX() - 45);
-                preparedStatement.setInt(++index, point.getX() + 45);
-                preparedStatement.setInt(++index, point.getY() - 45);
-                preparedStatement.setInt(++index, point.getY() + 45);
-            }
+        Map<WorldPoint, Map<Integer, Integer>> outerMap = new HashMap<>();
 
-            ResultSet resultSet = preparedStatement.executeQuery();
+        while (resultSet.next()) {
+            int xCoord = resultSet.getInt("x_coord");
+            int yCoord = resultSet.getInt("y_coord");
+            int plane = resultSet.getInt("plane");
+            point = new WorldPoint(xCoord, yCoord, plane);
+            int npcId = resultSet.getInt("npc_id");
+            int count = resultSet.getInt("count");
+            Map<Integer, Integer> innerMap = new HashMap<>();
 
-            Map<WorldPoint, Map<Integer, Integer>> outerMap = new HashMap<>();
-
-            while (resultSet.next()) {
-                int xCoord = resultSet.getInt("x_coord");
-                int yCoord = resultSet.getInt("y_coord");
-                int plane = resultSet.getInt("plane");
-                point = new WorldPoint(xCoord, yCoord, plane);
-                int npcId = resultSet.getInt("npc_id");
-                int count = resultSet.getInt("count");
-                Map<Integer, Integer> innerMap = new HashMap<>();
-
-                innerMap.put(npcId, count);
-                outerMap.put(point, innerMap);
-            }
-
-            return outerMap;
+            innerMap.put(npcId, count);
+            outerMap.put(point, innerMap);
         }
+
+        return outerMap;
     }
 
     @SneakyThrows
     Map<Integer, Map<Integer, Integer>> retrieveLootMap(String username) {
-        try (PreparedStatement preparedStatement = connection.prepareStatement("SELECT * FROM " + tableNameLoot + " WHERE username = ?")) {
-            preparedStatement.setString(1, username);
-            ResultSet resultSet = preparedStatement.executeQuery();
+        String sqlString = "SELECT * FROM " + tableNameLoot + " WHERE username = ?";
+        Object[] args = {username};
+        ResultSet resultSet = executePreparedStatement(sqlString, args);
 
-            Map<Integer, Map<Integer, Integer>> map = new HashMap<>();
+        Map<Integer, Map<Integer, Integer>> map = new HashMap<>();
 
-            while (resultSet.next()) {
-                int npcId = resultSet.getInt("npc_id");
-                int itemId = resultSet.getInt("item_id");
-                int quantity = resultSet.getInt("quantity");
+        while (resultSet.next()) {
+            int npcId = resultSet.getInt("npc_id");
+            int itemId = resultSet.getInt("item_id");
+            int quantity = resultSet.getInt("quantity");
 
-                Map<Integer, Integer> innerMap = new HashMap<>();
+            Map<Integer, Integer> innerMap = new HashMap<>();
 
-                innerMap.put(itemId, quantity);
-                map.put(npcId, innerMap);
-            }
-
-            return map;
+            innerMap.put(itemId, quantity);
+            map.put(npcId, innerMap);
         }
+
+        return map;
     }
 
     @SneakyThrows
     Map<WorldPoint, EnumMap<Skill, Integer[]>> retrieveXpMap(Actor player) {
-        try (PreparedStatement preparedStatement = connection.prepareStatement("SELECT * FROM " + tableNameXp +
-                             " WHERE username = ? AND x_coord >= ? AND x_coord <= ? AND y_coord >= ? AND y_coord <= ? AND plane = ?")) {
-            int index = 0;
-            WorldPoint point = player.getWorldLocation();
+        WorldPoint point = player.getWorldLocation();
 
-            preparedStatement.setString(++index, player.getName());
-            preparedStatement.setInt(++index, point.getX() - 45);
-            preparedStatement.setInt(++index, point.getX() + 45);
-            preparedStatement.setInt(++index, point.getY() - 45);
-            preparedStatement.setInt(++index, point.getY() + 45);
-            preparedStatement.setInt(++index, point.getPlane());
+        String sqlString = "SELECT * FROM " + tableNameXp +
+                           " WHERE username = ? AND x_coord >= ? AND x_coord <= ? AND y_coord >= ? AND y_coord <= ? AND plane = ?";
+        Object[] args = {player.getName(), point.getX() - 45, point.getX() + 45, point.getY() - 45, point.getY() + 45, point.getPlane()};
+        ResultSet resultSet = executePreparedStatement(sqlString, args);
 
-            ResultSet resultSet = preparedStatement.executeQuery();
+        Map<WorldPoint, EnumMap<Skill, Integer[]>> map = new HashMap<>();
 
-            Map<WorldPoint, EnumMap<Skill, Integer[]>> map = new HashMap<>();
+        while (resultSet.next()) {
+            int xCoord = resultSet.getInt("x_coord");
+            int yCoord = resultSet.getInt("y_coord");
+            int plane = resultSet.getInt("plane");
 
-            while (resultSet.next()) {
-                int xCoord = resultSet.getInt("x_coord");
-                int yCoord = resultSet.getInt("y_coord");
-                int plane = resultSet.getInt("plane");
+            point = new WorldPoint(xCoord, yCoord, plane);
 
-                point = new WorldPoint(xCoord, yCoord, plane);
+            EnumMap<Skill, Integer[]> skillXpMap = new EnumMap<>(Skill.class);
 
-                EnumMap<Skill, Integer[]> skillXpMap = new EnumMap<>(Skill.class);
+            // For every skill except for Skill.OVERALL, fill the inner map with XP data from resultSet.
+            for (int x = 0; x < Skill.values().length - 1; x++) {
+                String skillName = Skill.values()[x].getName();
 
-                // For every skill except for Skill.OVERALL, fill the inner map with XP data from resultSet.
-                for (int x = 0; x < Skill.values().length - 1; x++) {
-                    String skillName = Skill.values()[x].getName();
-
-                    skillXpMap.put(Skill.values()[x],
-                            new Integer[] {resultSet.getInt(skillName), resultSet.getInt(skillName + "_num")});
-                }
-
-                map.put(point, skillXpMap);
+                skillXpMap.put(Skill.values()[x],
+                        new Integer[] {resultSet.getInt(skillName), resultSet.getInt(skillName + "_num")});
             }
 
-            return map;
+            map.put(point, skillXpMap);
+        }
+
+        return map;
+    }
+
+    @SneakyThrows
+    synchronized ResultSet executePreparedStatement(String sqlString, Object ... args) {
+        try (PreparedStatement preparedStatement = connection.prepareStatement(sqlString,
+                                                                          ResultSet.TYPE_SCROLL_INSENSITIVE,
+                                                                          ResultSet.CONCUR_UPDATABLE)) {
+            for (int x = 0; x < args.length; x++) {
+                if (args[x] instanceof Integer intArg) {
+                    preparedStatement.setInt(x + 1, intArg);
+                } else if (args[x] instanceof String strArg) {
+                    preparedStatement.setString(x + 1, strArg);
+                }
+            }
+
+            return preparedStatement.executeQuery();
         }
     }
 
