@@ -272,9 +272,10 @@ public class Database {
             // For every skill except for Skill.OVERALL, fill the inner map with XP data from resultSet.
             for (int x = 0; x < Skill.values().length - 1; x++) {
                 String skillName = Skill.values()[x].getName();
+                int skillXp = resultSet.getInt(skillName);
+                int skillXpOccurrences = resultSet.getInt(skillName + "_num");
 
-                skillXpMap.put(Skill.values()[x],
-                        new Integer[] {resultSet.getInt(skillName), resultSet.getInt(skillName + "_num")});
+                skillXpMap.put(Skill.values()[x], new Integer[] {skillXp, skillXpOccurrences});
             }
 
             map.put(point, skillXpMap);
