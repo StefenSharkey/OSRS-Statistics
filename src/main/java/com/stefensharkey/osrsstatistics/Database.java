@@ -188,6 +188,8 @@ public class Database {
         } else {
             resultSet.moveToInsertRow();
 
+            System.out.printf("npcId: %d\n", npcId);
+
             resultSet.updateString("username", username);
             resultSet.updateInt("npc_id", npcId);
             resultSet.updateInt("item_id", itemStack.getId());
@@ -205,8 +207,8 @@ public class Database {
                            (nearby ? " AND x_coord >= ? AND x_coord <= ? AND y_coord >= ? AND y_coord <= ?"
                                    : "");
         Object[] args = nearby
-                        ? new Object[]{player.getName(), point.getPlane()}
-                        : new Object[]{player.getName(), point.getPlane(), point.getX() - 45, point.getX() + 45, point.getY() - 45, point.getY() + 45};
+                        ? new Object[]{player.getName(), point.getPlane(), point.getX() - 45, point.getX() + 45, point.getY() - 45, point.getY() + 45}
+                        : new Object[]{player.getName(), point.getPlane()};
         ResultSet resultSet = executePreparedStatement(sqlString, args);
 
         Map<WorldPoint, Map<Integer, Integer>> outerMap = new HashMap<>();
@@ -286,6 +288,8 @@ public class Database {
 
     @SneakyThrows
     synchronized ResultSet executePreparedStatement(String sqlString, Object ... args) {
+        System.out.println(sqlString);
+        System.out.println(args);
         try (PreparedStatement preparedStatement = connection.prepareStatement(sqlString,
                                                                           ResultSet.TYPE_SCROLL_INSENSITIVE,
                                                                           ResultSet.CONCUR_UPDATABLE)) {
