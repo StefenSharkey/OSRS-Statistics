@@ -105,7 +105,7 @@ public class StatisticsXpOverlay extends Overlay {
                         .append("</br>");
 
                 for (Map.Entry<WorldPoint, EnumMap<Skill, Integer[]>> entry : xpMap.entrySet()) {
-                    if (Utilities.worldPointEquals(entry.getKey(), worldPoint)) {
+                    if (entry.getKey().equals(worldPoint)) {
                         Map<Skill, Integer[]> skillEnumMap = entry.getValue();
                         int max = Integer.MIN_VALUE;
 
